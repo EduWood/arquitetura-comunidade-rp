@@ -24,13 +24,13 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, senha }),
+        body: JSON.stringify({ email, password: senha }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setErro(data.error || 'Erro ao fazer login');
+        setErro(data.message || data.error || 'Erro ao fazer login');
         return;
       }
 
