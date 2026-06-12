@@ -5,6 +5,9 @@ import { verificarAdminCMS } from '@/lib/cms/middleware';
 import { MaterialService } from '@/lib/member/material-service';
 import { CreateMaterialSchema } from '@/lib/member/types';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/materials - Upload de material (ADMIN)
  */

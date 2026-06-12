@@ -6,6 +6,9 @@ import { CourseService } from '@/lib/course/course-service';
 import { CreateCursoSchema } from '@/lib/course/types';
 import { verificarAdminCMS } from '@/lib/cms/middleware';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Query parameters para filtros

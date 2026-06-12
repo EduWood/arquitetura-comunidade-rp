@@ -11,6 +11,9 @@ import { DashboardService } from '@/lib/member/dashboard-service';
 import { CourseProgressService } from '@/lib/member/course-progress-service';
 import { ContinueWatchingService } from '@/lib/member/continue-watching-service';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/me/courses - Obter todos os cursos do usuário
  */

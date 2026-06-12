@@ -4,6 +4,9 @@ import { requireAuth } from '@/lib/auth/middleware';
 import { ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { auditLogout } from '@/lib/audit-logger';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 // ========================================
 // POST /api/auth/logout
 // ========================================

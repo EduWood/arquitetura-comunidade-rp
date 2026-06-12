@@ -5,6 +5,9 @@ import { verificarAdminCMS } from '@/lib/cms/middleware';
 import { MediaCleanupService } from '@/lib/cms/media-cleanup-service';
 import { auditLog } from '@/lib/audit-logger';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await verificarAdminCMS(request);

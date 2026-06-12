@@ -7,6 +7,9 @@ import { verificarToken } from '@/lib/auth/token-verification';
 import { extractRequestInfo } from '@/lib/request-info';
 import { CourseProgressService } from '@/lib/member/course-progress-service';
 import { ContinueWatchingService } from '@/lib/member/continue-watching-service';
+
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
 import {
   MarkLessonCompleteSchema,
   SavePositionSchema,

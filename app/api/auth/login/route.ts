@@ -4,6 +4,9 @@ import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/hel
 import { AuthError } from '@/lib/auth/errors';
 import { validateCORSMiddleware } from '@/lib/cors';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 // ========================================
 // POST /api/auth/login
 // ========================================

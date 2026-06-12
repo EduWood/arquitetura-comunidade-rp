@@ -5,6 +5,9 @@ import { verificarAdminCMS } from '@/lib/cms/middleware';
 import { StorageIntegrityService } from '@/lib/cms/storage-integrity-service';
 import { auditLog } from '@/lib/audit-logger';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await verificarAdminCMS(request);

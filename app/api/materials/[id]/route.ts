@@ -5,6 +5,9 @@ import { verificarToken } from '@/lib/auth/token-verification';
 import { extractRequestInfo } from '@/lib/request-info';
 import { MaterialService } from '@/lib/member/material-service';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/materials/[id] - Download ou info do material
  */

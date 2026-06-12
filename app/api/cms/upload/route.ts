@@ -6,6 +6,9 @@ import { CMSImageService } from '@/lib/cms/image-service';
 import { verificarToken } from '@/lib/auth/token-verification';
 import { verificarPermissao } from '@/lib/auth/permission-checker';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação

@@ -3,6 +3,9 @@ import { ForgotPasswordService } from '@/lib/auth/forgot-password-service';
 import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { validateCORSMiddleware } from '@/lib/cors';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 // ========================================
 // POST /api/auth/forgot-password
 // ========================================

@@ -6,6 +6,9 @@ import { ModuleService } from '@/lib/course/module-service';
 import { CreateModuloSchema } from '@/lib/course/types';
 import { verificarAdminCMS } from '@/lib/cms/middleware';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

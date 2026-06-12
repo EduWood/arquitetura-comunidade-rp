@@ -5,6 +5,9 @@ import { MediaCleanupService } from '@/lib/cms/media-cleanup-service';
 import { StorageIntegrityService } from '@/lib/cms/storage-integrity-service';
 import { prisma } from '@/lib/db';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Verificar token secreto do cron
  */

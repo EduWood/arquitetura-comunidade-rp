@@ -5,6 +5,9 @@ import { CMSService } from '@/lib/cms/cms-service';
 import { verificarToken } from '@/lib/auth/token-verification';
 import { verificarPermissao } from '@/lib/auth/permission-checker';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ nome: string }> }

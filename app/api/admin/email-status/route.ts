@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '@/lib/email-service';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const validacao = await emailService.validar();

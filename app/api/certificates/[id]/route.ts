@@ -5,6 +5,9 @@ import { verificarToken } from '@/lib/auth/token-verification';
 import { extractRequestInfo } from '@/lib/request-info';
 import { CertificateService } from '@/lib/member/certificate-service';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/certificates/[id] - Obter/download certificado
  */

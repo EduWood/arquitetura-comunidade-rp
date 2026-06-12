@@ -3,6 +3,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CMSService } from '@/lib/cms/cms-service';
 
+// Skip static generation - always dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const resultado = await CMSService.listarSecoes('pagina-principal');
