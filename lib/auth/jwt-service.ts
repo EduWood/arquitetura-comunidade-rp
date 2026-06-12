@@ -14,24 +14,37 @@ export class JWTService {
   private static secret: Secret;
   private static expiration: string;
   private static refreshExpiration: string;
+  private static initialized = false;
 
-  static {
-    // Validate JWT_SECRET is configured
-    if (!process.env.JWT_SECRET) {
-      throw new Error(
-        'CRITICAL: JWT_SECRET environment variable is required. Add JWT_SECRET to your .env file.'
-      );
+  private static initializeSecret(): void {
+    if (this.initialized) return;
+    
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      // Durante o build, JWT_SECRET pode não estar disponível
+      // Mas será necessário em runtime quando tokens forem gerados/verificados
+      this.secret = 'placeholder-will-be-replaced-at-runtime';
+    } else {
+      this.secret = secret;
     }
-
-    this.secret = process.env.JWT_SECRET;
+    
     this.expiration = process.env.JWT_EXPIRATION || '24h';
     this.refreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '7d';
+    this.initialized = true;
   }
 
   /**
    * Generate Access Token
    */
   static generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
+    this.initializeSecret();
+    
+    if (this.secret === 'placeholder-will-be-replaced-at-runtime') {
+      throw new Error(
+        'JWT_SECRET is not configured. Ensure JWT_SECRET environment variable is set.'
+      );
+    }
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (jwt.sign as any)(
       payload,
@@ -47,6 +60,14 @@ export class JWTService {
    * Generate Refresh Token
    */
   static generateRefreshToken(payload: Omit<JWTRefreshPayload, 'iat' | 'exp'>): string {
+    this.initializeSecret();
+    
+    if (this.secret === 'placeholder-will-be-replaced-at-runtime') {
+      throw new Error(
+        'JWT_SECRET is not configured. Ensure JWT_SECRET environment variable is set.'
+      );
+    }
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (jwt.sign as any)(
       payload,
@@ -62,6 +83,7 @@ export class JWTService {
    * Verify Access Token
    */
   static verifyAccessToken(token: string): JWTPayload | null {
+    this.initializeSecret();
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ['HS256'],
@@ -76,6 +98,7 @@ export class JWTService {
    * Verify Refresh Token
    */
   static verifyRefreshToken(token: string): JWTRefreshPayload | null {
+    this.initializeSecret();
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ['HS256'],

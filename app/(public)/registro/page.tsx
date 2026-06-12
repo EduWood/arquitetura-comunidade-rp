@@ -37,7 +37,7 @@ export default function RegistroPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ nome, email, senha, confirmar_senha: confirmarSenha }),
+        body: JSON.stringify({ nome, email, password: senha, confirmPassword: confirmarSenha }),
       });
 
       const data = await res.json();

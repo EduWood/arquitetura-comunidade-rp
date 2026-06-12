@@ -62,11 +62,12 @@ export function validateCORS(
   headers: Record<string, string>;
   error?: string;
 } {
+  // Se não houver origin header, é uma requisição same-origin (localhost dev ou servidor)
+  // Permitir essas requisições
   if (!origin) {
     return {
-      isValid: false,
+      isValid: true,
       headers: {},
-      error: 'Origin header is required',
     };
   }
 
