@@ -17,12 +17,14 @@ export enum AuditAction {
 }
 
 export interface AuditLog {
-  usuario_id: string;
-  acao: AuditAction;
-  descricao?: string;
+  usuario_id?: string | null;
+  acao: string;
+  tabela_afetada: string;
+  id_recurso?: string | null;
+  valores_antes?: Record<string, any> | null;
+  valores_depois?: Record<string, any> | null;
   ip_address?: string;
   user_agent?: string;
-  dados_adicionais?: Record<string, any>;
 }
 
 /**
@@ -32,12 +34,14 @@ export async function auditLog(log: AuditLog): Promise<void> {
   try {
     await prisma.logAuditoria.create({
       data: {
-        usuario_id: log.usuario_id,
+        usuario_id: log.usuario_id || null,
         acao: log.acao,
-        descricao: log.descricao,
+        tabela_afetada: log.tabela_afetada,
+        id_recurso: log.id_recurso || null,
+        valores_antes: log.valores_antes ? JSON.stringify(log.valores_antes) : null,
+        valores_depois: log.valores_depois ? JSON.stringify(log.valores_depois) : null,
         ip_address: log.ip_address,
         user_agent: log.user_agent,
-        dados_adicionais: log.dados_adicionais ? JSON.stringify(log.dados_adicionais) : null,
       },
     });
   } catch (error) {
@@ -86,8 +90,9 @@ export async function auditLoginSuccess(
 ): Promise<void> {
   await auditLog({
     usuario_id: usuarioId,
-    acao: AuditAction.LOGIN_SUCCESS,
-    descricao: 'Login bem-sucedido',
+    acao: 'LOGIN_SUCCESS',
+    tabela_afetada: 'Usuario',
+    id_recurso: usuarioId,
     ip_address: ip,
     user_agent: userAgent,
   });
@@ -100,12 +105,12 @@ export async function auditLoginFailure(
   reason: string
 ): Promise<void> {
   await auditLog({
-    usuario_id: 'unknown',
-    acao: AuditAction.LOGIN_FAILURE,
-    descricao: `Falha no login: ${reason}`,
+    usuario_id: null,
+    acao: 'LOGIN_FAILURE',
+    tabela_afetada: 'Usuario',
+    valores_depois: { email, reason },
     ip_address: ip,
     user_agent: userAgent,
-    dados_adicionais: { email },
   });
 }
 
@@ -116,12 +121,12 @@ export async function auditLoginBlocked(
   reason: string
 ): Promise<void> {
   await auditLog({
-    usuario_id: 'unknown',
-    acao: AuditAction.LOGIN_BLOCKED,
-    descricao: `Login bloqueado: ${reason}`,
+    usuario_id: null,
+    acao: 'LOGIN_BLOCKED',
+    tabela_afetada: 'Usuario',
+    valores_depois: { email, reason },
     ip_address: ip,
     user_agent: userAgent,
-    dados_adicionais: { email },
   });
 }
 
@@ -133,11 +138,11 @@ export async function auditRegister(
 ): Promise<void> {
   await auditLog({
     usuario_id: usuarioId,
-    acao: AuditAction.REGISTER,
-    descricao: 'Novo usuário registrado',
+    acao: 'REGISTER',
+    tabela_afetada: 'Usuario',
+    id_recurso: usuarioId,
     ip_address: ip,
     user_agent: userAgent,
-    dados_adicionais: { email },
   });
 }
 
@@ -148,8 +153,8 @@ export async function auditLogout(
 ): Promise<void> {
   await auditLog({
     usuario_id: usuarioId,
-    acao: AuditAction.LOGOUT,
-    descricao: 'Logout realizado',
+    acao: 'LOGOUT',
+    tabela_afetada: 'SessaoJWT',
     ip_address: ip,
     user_agent: userAgent,
   });
@@ -163,8 +168,9 @@ export async function auditResetPassword(
 ): Promise<void> {
   await auditLog({
     usuario_id: usuarioId,
-    acao: success ? AuditAction.RESET_PASSWORD : AuditAction.RESET_PASSWORD_FAILED,
-    descricao: success ? 'Senha redefinida com sucesso' : 'Falha na redefinição de senha',
+    acao: success ? 'RESET_PASSWORD' : 'RESET_PASSWORD_FAILED',
+    tabela_afetada: 'Usuario',
+    id_recurso: usuarioId,
     ip_address: ip,
     user_agent: userAgent,
   });
@@ -173,8 +179,9 @@ export async function auditResetPassword(
 export async function auditRegistrationSuccess(userId: string, email: string, ipAddress: string) {
   await auditLog({
     usuario_id: userId,
-    acao: AuditAction.REGISTER,
-    descricao: `Novo usuário registrado: ${email}`,
+    acao: 'REGISTER',
+    tabela_afetada: 'Usuario',
+    id_recurso: userId,
     ip_address: ipAddress,
     user_agent: 'registration',
   });
@@ -182,20 +189,20 @@ export async function auditRegistrationSuccess(userId: string, email: string, ip
 
 export async function auditRegistrationFailure(email: string, ipAddress: string, reason: string) {
   await auditLog({
-    usuario_id: 'unknown',
-    acao: AuditAction.REGISTER,
-    descricao: `Falha no registro: ${reason}`,
+    usuario_id: null,
+    acao: 'REGISTER',
+    tabela_afetada: 'Usuario',
+    valores_depois: { email, reason },
     ip_address: ipAddress,
     user_agent: 'registration',
-    dados_adicionais: { email },
   });
 }
 
 export async function auditTokenRefresh(userId: string, ipAddress: string) {
   await auditLog({
     usuario_id: userId,
-    acao: AuditAction.REFRESH_TOKEN,
-    descricao: 'Token atualizado com sucesso',
+    acao: 'REFRESH_TOKEN',
+    tabela_afetada: 'SessaoJWT',
     ip_address: ipAddress,
     user_agent: 'token_refresh',
   });
@@ -203,24 +210,26 @@ export async function auditTokenRefresh(userId: string, ipAddress: string) {
 
 export async function auditTokenRefreshFailure(userId: string, ipAddress: string, reason: string) {
   await auditLog({
-    usuario_id: userId || 'unknown',
-    acao: AuditAction.REFRESH_TOKEN,
-    descricao: `Falha ao atualizar token: ${reason}`,
+    usuario_id: userId || null,
+    acao: 'REFRESH_TOKEN',
+    tabela_afetada: 'SessaoJWT',
+    valores_depois: { reason },
     ip_address: ipAddress,
     user_agent: 'token_refresh',
   });
 }
 
 export async function auditPasswordReset(userId: string, action: string, ipAddress?: string) {
-  const actionMap: Record<string, AuditAction> = {
-    forgot_password_requested: AuditAction.FORGOT_PASSWORD,
-    password_reset_completed: AuditAction.RESET_PASSWORD,
+  const actionMap: Record<string, string> = {
+    forgot_password_requested: 'FORGOT_PASSWORD',
+    password_reset_completed: 'RESET_PASSWORD',
   };
 
   await auditLog({
     usuario_id: userId,
-    acao: actionMap[action] || AuditAction.RESET_PASSWORD,
-    descricao: action === 'forgot_password_requested' ? 'Solicitação de redefinição de senha' : 'Senha redefinida com sucesso',
+    acao: actionMap[action] || 'RESET_PASSWORD',
+    tabela_afetada: 'Usuario',
+    id_recurso: userId,
     ip_address: ipAddress || 'unknown',
     user_agent: 'password_reset',
   });
@@ -229,8 +238,9 @@ export async function auditPasswordReset(userId: string, action: string, ipAddre
 export async function auditPasswordChange(userId: string, ipAddress?: string) {
   await auditLog({
     usuario_id: userId,
-    acao: AuditAction.CHANGE_PASSWORD,
-    descricao: 'Senha alterada pelo usuário',
+    acao: 'CHANGE_PASSWORD',
+    tabela_afetada: 'Usuario',
+    id_recurso: userId,
     ip_address: ipAddress || 'unknown',
     user_agent: 'change_password',
   });

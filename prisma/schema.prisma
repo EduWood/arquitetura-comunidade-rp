@@ -26,6 +26,7 @@ model Usuario {
   assinatura_ativa      Boolean     @default(false)
   data_inicio_assinatura DateTime?
   data_fim_assinatura   DateTime?
+  bloqueado_ate         DateTime?
   ultima_login          DateTime?
   created_at            DateTime    @default(now())
   updated_at            DateTime    @updatedAt

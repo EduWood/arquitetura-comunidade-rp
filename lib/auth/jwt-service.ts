@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { Secret } from 'jsonwebtoken';
 import { JWTPayload, JWTRefreshPayload } from './types';
 
 interface DecodedToken {
@@ -11,7 +11,7 @@ interface DecodedToken {
 // ========================================
 
 export class JWTService {
-  private static secret: string;
+  private static secret: Secret;
   private static expiration: string;
   private static refreshExpiration: string;
 
@@ -32,20 +32,30 @@ export class JWTService {
    * Generate Access Token
    */
   static generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-    return jwt.sign(payload, this.secret, {
-      expiresIn: this.expiration,
-      algorithm: 'HS256',
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (jwt.sign as any)(
+      payload,
+      this.secret,
+      {
+        expiresIn: this.expiration,
+        algorithm: 'HS256',
+      }
+    );
   }
 
   /**
    * Generate Refresh Token
    */
   static generateRefreshToken(payload: Omit<JWTRefreshPayload, 'iat' | 'exp'>): string {
-    return jwt.sign(payload, this.secret, {
-      expiresIn: this.refreshExpiration,
-      algorithm: 'HS256',
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (jwt.sign as any)(
+      payload,
+      this.secret,
+      {
+        expiresIn: this.refreshExpiration,
+        algorithm: 'HS256',
+      }
+    );
   }
 
   /**

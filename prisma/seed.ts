@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role, StatusUsuario, CategoriaCurso, NivelCurso, TipoConfiguracao, TipoNotificacao } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -126,7 +126,15 @@ async function main() {
         update: {},
         create: {
           id: `curso-${curso.titulo}`,
-          ...curso,
+          titulo: curso.titulo,
+          descricao: curso.descricao,
+          descricao_curta: curso.descricao_curta,
+          categoria: curso.categoria as CategoriaCurso,
+          nivel: curso.nivel as NivelCurso,
+          preco: curso.preco,
+          duracao_horas: curso.duracao_horas,
+          ordem: curso.ordem,
+          publicado: curso.publicado,
         },
       })
     )
@@ -280,7 +288,12 @@ async function main() {
       prisma.cMSConfiguracao.upsert({
         where: { chave: config.chave },
         update: { valor: config.valor },
-        create: config,
+        create: {
+          chave: config.chave,
+          valor: config.valor,
+          tipo: config.tipo as TipoConfiguracao,
+          descricao: config.descricao,
+        },
       })
     )
   );
@@ -501,7 +514,13 @@ async function main() {
   await Promise.all(
     notificacoes.map((notif) =>
       prisma.notificacao.create({
-        data: notif,
+        data: {
+          titulo: notif.titulo,
+          mensagem: notif.mensagem,
+          tipo: notif.tipo as TipoNotificacao,
+          ativo: notif.ativo,
+          ordem_exibicao: notif.ordem_exibicao,
+        },
       })
     )
   );
