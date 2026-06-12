@@ -1,9 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
 import { JWTService } from './jwt-service';
 import { AuthError, AuthErrorCodes } from './errors';
-
-const prisma = new PrismaClient();
+import { auditLoginSuccess, auditLoginFailure, auditLoginBlocked, extractIP } from '@/lib/audit-logger';
+import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/rate-limiting';
+import { nanoid } from 'nanoid';
 
 // ========================================
 // Login Service
@@ -18,14 +19,27 @@ export class LoginService {
     password: string,
     userAgent?: string,
     ipAddress?: string,
-    rememberMe: boolean = false
+    rememberMe: boolean = false,
+    request?: Request
   ) {
+    // Check rate limiting
+    const rateLimit = await checkLoginRateLimit(email);
+    if (!rateLimit.success) {
+      await auditLoginBlocked(email, ipAddress || 'unknown', userAgent || 'unknown', 'Rate limit exceeded');
+      throw new AuthError(
+        AuthErrorCodes.USER_LOCKED,
+        `Muitas tentativas de login. Tente novamente em ${rateLimit.retryAfter} segundos`,
+        429
+      );
+    }
+
     // Find user
     const user = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase() },
     });
 
     if (!user) {
+      await auditLoginFailure(email, ipAddress || 'unknown', userAgent || 'unknown', 'User not found');
       throw new AuthError(
         AuthErrorCodes.INVALID_CREDENTIALS,
         'Email ou senha incorretos',
@@ -34,7 +48,8 @@ export class LoginService {
     }
 
     // Check if user is locked
-    if (user.bloqueadoAte && user.bloqueadoAte > new Date()) {
+    if (user.bloqueado_ate && user.bloqueado_ate > new Date()) {
+      await auditLoginBlocked(email, ipAddress || 'unknown', userAgent || 'unknown', 'User account locked');
       throw new AuthError(
         AuthErrorCodes.USER_LOCKED,
         'Usuário bloqueado por múltiplas tentativas. Tente novamente mais tarde',
@@ -43,27 +58,10 @@ export class LoginService {
     }
 
     // Verify password
-    const isValidPassword = await PasswordService.verifyPassword(password, user.senhaHash);
+    const isValidPassword = await PasswordService.verifyPassword(password, user.senha_hash);
 
     if (!isValidPassword) {
-      // Increment failed login attempts
-      const novasTentativas = (user.tentativasLogin || 0) + 1;
-      const maxAttempts = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5');
-      const lockTimeMinutes = parseInt(process.env.LOGIN_LOCK_TIME_MINUTES || '15');
-
-      let bloqueadoAte = null;
-      if (novasTentativas >= maxAttempts) {
-        bloqueadoAte = new Date(Date.now() + lockTimeMinutes * 60 * 1000);
-      }
-
-      await prisma.usuario.update({
-        where: { id: user.id },
-        data: {
-          tentativasLogin: novasTentativas,
-          bloqueadoAte,
-        },
-      });
-
+      await auditLoginFailure(email, ipAddress || 'unknown', userAgent || 'unknown', 'Invalid password');
       throw new AuthError(
         AuthErrorCodes.INVALID_CREDENTIALS,
         'Email ou senha incorretos',
@@ -71,51 +69,52 @@ export class LoginService {
       );
     }
 
-    // Check if email is verified
-    if (!user.emailVerificado && process.env.EMAIL_VERIFICATION_ENABLED === 'true') {
-      throw new AuthError(
-        AuthErrorCodes.EMAIL_NOT_VERIFIED,
-        'Email não verificado. Verifique seu email',
-        403
-      );
-    }
-
-    // Reset failed login attempts
-    await prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        tentativasLogin: 0,
-        bloqueadoAte: null,
-        ultimoAcesso: new Date(),
-      },
-    });
+    // Generate unique session ID
+    const sessionId = nanoid();
 
     // Generate tokens
     const accessToken = JWTService.generateAccessToken({
       userId: user.id,
       email: user.email,
-      role: user.role as any,
-      sessionId: `session_${Date.now()}`,
+      role: user.role,
+      sessionId,
     });
 
     const refreshToken = JWTService.generateRefreshToken({
       userId: user.id,
-      sessionId: `session_${Date.now()}`,
+      sessionId,
     });
 
     // Create session
-    const expiresAt = new Date(Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+    const expiresAt = new Date(
+      Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)
+    );
 
     await prisma.sessaoJWT.create({
       data: {
-        usuarioId: user.id,
-        token: refreshToken,
-        expiresAt,
-        userAgent: userAgent?.substring(0, 500) || null,
-        ipAddress: ipAddress || null,
-        ativa: true,
+        session_id: sessionId,
+        usuario_id: user.id,
+        token: accessToken,
+        refresh_token: refreshToken,
+        ip_address: ipAddress || null,
+        user_agent: userAgent?.substring(0, 500) || null,
+        expires_at: expiresAt,
       },
     });
+
+    // Update user last login
+    await prisma.usuario.update({
+      where: { id: user.id },
+      data: {
+        ultima_login: new Date(),
+      },
+    });
+
+    // Reset rate limiting
+    await resetLoginRateLimit(email);
+
+    // Audit log
+    await auditLoginSuccess(user.id, ipAddress || 'unknown', userAgent || 'unknown');
 
     return {
       accessToken,
@@ -125,18 +124,7 @@ export class LoginService {
         email: user.email,
         nome: user.nome,
         role: user.role,
-        emailVerificado: user.emailVerificado,
       },
     };
-  }
-
-  /**
-   * Logout user by session ID
-   */
-  static async logout(sessionId: string) {
-    await prisma.sessaoJWT.updateMany({
-      where: { id: sessionId },
-      data: { ativa: false },
-    });
   }
 }

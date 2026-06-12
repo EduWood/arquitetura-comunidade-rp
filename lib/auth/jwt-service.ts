@@ -6,9 +6,22 @@ import { JWTPayload, JWTRefreshPayload } from './types';
 // ========================================
 
 export class JWTService {
-  private static secret = process.env.JWT_SECRET || 'dev-secret-key';
-  private static expiration = process.env.JWT_EXPIRATION || '24h';
-  private static refreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '7d';
+  private static secret: string;
+  private static expiration: string;
+  private static refreshExpiration: string;
+
+  static {
+    // Validate JWT_SECRET is configured
+    if (!process.env.JWT_SECRET) {
+      throw new Error(
+        'CRITICAL: JWT_SECRET environment variable is required. Add JWT_SECRET to your .env file.'
+      );
+    }
+
+    this.secret = process.env.JWT_SECRET;
+    this.expiration = process.env.JWT_EXPIRATION || '24h';
+    this.refreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '7d';
+  }
 
   /**
    * Generate Access Token

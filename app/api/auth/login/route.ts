@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { LoginService } from '@/lib/auth/login-service';
 import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { AuthError } from '@/lib/auth/errors';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // POST /api/auth/login
@@ -9,6 +10,12 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const body = await request.json();
     const { email, password, rememberMe } = body;
 
@@ -35,10 +42,9 @@ export async function POST(request: NextRequest) {
       password,
       userAgent || undefined,
       ipAddress,
-      rememberMe === true
+      rememberMe === true,
+      request
     );
-
-    console.log('[AUTH] Login bem-sucedido:', email);
 
     // Set refresh token as httpOnly cookie
     const response = NextResponse.json(
@@ -56,15 +62,13 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60, // 7 days or 1 day
+      maxAge: rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60,
       path: '/',
     });
 
     return response;
   } catch (error) {
     if (error instanceof AuthError) {
-      console.warn('[AUTH] Login falhou:', error.message);
-
       return NextResponse.json(
         ResponseHelper.error(error.code, error.message, error.statusCode, error.details),
         { status: error.statusCode }

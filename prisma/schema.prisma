@@ -50,6 +50,7 @@ model Usuario {
 
 model SessaoJWT {
   id                String    @id @default(cuid())
+  session_id        String    @unique @db.VarChar(255) // Para Redis e rate limiting
   usuario_id        String
   token             String    @unique @db.VarChar(1000)
   refresh_token     String    @unique @db.VarChar(1000)
@@ -63,6 +64,7 @@ model SessaoJWT {
   usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id])
+  @@index([session_id])
   @@index([expires_at])
   @@index([revogado])
 }
