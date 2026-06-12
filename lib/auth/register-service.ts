@@ -2,16 +2,14 @@ import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
 import { ValidationHelper } from './helpers';
 import { AuthError, AuthErrorCodes } from './errors';
-import { auditRegistrationSuccess, auditRegistrationFailure } from '@/lib/audit-logger';
-import { checkRegisterRateLimit } from '@/lib/rate-limiting';
 
 // ========================================
-// Register Service
+// Register Service (Simplified)
 // ========================================
 
 export class RegisterService {
   /**
-   * Register new user
+   * Register new user - simplified version without rate limiting and audit logging
    */
   static async register(
     nome: string,
@@ -21,22 +19,6 @@ export class RegisterService {
     ipAddress?: string,
     userAgent?: string
   ) {
-    // Check registration rate limit (optional - if Redis not configured, skip)
-    try {
-      const rateLimit = await checkRegisterRateLimit(email);
-      if (!rateLimit.success) {
-        await auditRegistrationFailure(email, ipAddress || 'unknown', 'Rate limit exceeded');
-        throw new AuthError(
-          AuthErrorCodes.VALIDATION_ERROR,
-          'Muitas tentativas de registro. Tente novamente mais tarde',
-          429
-        );
-      }
-    } catch (error) {
-      // Se rate limit falhar (Redis não disponível), continua o registro
-      console.warn('[AUTH] Rate limit check failed, continuing registration:', error);
-    }
-
     // Validate name
     if (!nome || nome.trim().length < 3) {
       throw new AuthError(
@@ -69,7 +51,7 @@ export class RegisterService {
     if (!passwordValidation.isValid) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
-        'Senha fraca',
+        'Senha fraca. Mínimo 8 caracteres, 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial',
         400,
         { errors: passwordValidation.errors }
       );
@@ -78,10 +60,12 @@ export class RegisterService {
     // Check if email already exists
     const existingUser = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase() },
+    }).catch((err) => {
+      console.error('[RegisterService] Erro ao verificar email:', err);
+      throw err;
     });
 
     if (existingUser) {
-      await auditRegistrationFailure(email, ipAddress || 'unknown', 'Email already exists');
       throw new AuthError(
         AuthErrorCodes.EMAIL_ALREADY_EXISTS,
         'Este email já está registrado',
@@ -102,14 +86,10 @@ export class RegisterService {
         status: 'ATIVO',
         assinatura_ativa: false,
       },
+    }).catch((err) => {
+      console.error('[RegisterService] Erro ao criar usuário:', err);
+      throw err;
     });
-
-    // Audit log - success (optional, non-blocking)
-    try {
-      await auditRegistrationSuccess(user.id, user.email, ipAddress || 'unknown');
-    } catch (error) {
-      console.warn('[AUTH] Audit log failed:', error);
-    }
 
     return {
       id: user.id,
