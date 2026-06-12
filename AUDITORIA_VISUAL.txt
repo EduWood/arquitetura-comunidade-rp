@@ -1,0 +1,231 @@
+════════════════════════════════════════════════════════════════════════════════
+                      AUDITORIA TÉCNICA COMPLETA - ETAPA 2
+                            SISTEMA DE AUTENTICAÇÃO
+════════════════════════════════════════════════════════════════════════════════
+
+📊 RESUMO EXECUTIVO
+════════════════════════════════════════════════════════════════════════════════
+
+SCORE GERAL:               20/100
+STATUS:                    🔴 CRÍTICO - NÃO APROVADO
+PROBLEMAS ENCONTRADOS:     12
+  - Críticos: 3 (BLOQUEADORES)
+  - Altos: 5 (GRAVES)
+  - Médios: 3 (IMPORTANTES)
+  - Baixos: 1 (NICE-TO-HAVE)
+
+TEMPO DE CORREÇÃO:         3-4 horas
+TEMPO DE RE-TESTE:         1-2 horas
+
+════════════════════════════════════════════════════════════════════════════════
+🚨 PROBLEMAS CRÍTICOS (BLOQUEADORES)
+════════════════════════════════════════════════════════════════════════════════
+
+❌ 1. SCHEMA PRISMA NÃO MAPEADO
+   Impacto: CRÍTICO (10/10) - NENHUMA ROTA FUNCIONA
+   
+   Problema:
+   - Código usa camelCase (user.senhaHash)
+   - Schema usa snake_case (senha_hash)
+   - Sem @map(), Prisma não consegue mapear
+   - Resultado: undefined em runtime
+   
+   Afetados:
+   - login-service.ts
+   - refresh-token-service.ts
+   - register-service.ts
+   
+   Tempo Correção: 30 min
+   Solução: Adicionar @map() em todos os campos
+
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+
+❌ 2. PRISMA CLIENT NÃO OTIMIZADO
+   Impacto: CRÍTICO (10/10) - FALHA EM PRODUÇÃO
+   
+   Problema:
+   - Cada arquivo: const prisma = new PrismaClient()
+   - Cada requisição cria nova conexão
+   - Esgota pool MySQL após ~10 requisições
+   - Resultado: "too many connections" error
+   
+   Afetados:
+   - login-service.ts
+   - register-service.ts
+   - refresh-token-service.ts
+   - forgot-password-service.ts
+   
+   Tempo Correção: 15 min
+   Solução: Criar singleton em lib/db.ts
+
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+
+❌ 3. JWT_SECRET COM FALLBACK INSEGURO
+   Impacto: CRÍTICO (10/10) - SEGURANÇA COMPROMETIDA
+   
+   Problema:
+   - Fallback: 'dev-secret-key' (fraco)
+   - Sem env var, tokens são forjáveis
+   - Sem validação de tamanho mínimo (32 chars)
+   
+   Arquivo:
+   - jwt-service.ts:9
+   
+   Tempo Correção: 10 min
+   Solução: Validação obrigatória com throw
+
+════════════════════════════════════════════════════════════════════════════════
+⚠️  PROBLEMAS ALTOS (GRAVES)
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️  4. SESSION ID INCONSISTENTE
+   Impacto: ALTO (8/10) - LOGOUT SELETIVO FALHA
+   
+   Gerado como: session_${Date.now()}
+   Problema: Pode gerar IDs duplicados em paralelo
+   Arquivo: login-service.ts:97
+   Tempo: 20 min
+
+⚠️  5. REFRESH TOKEN CAMPOS ERRADOS
+   Impacto: ALTO (9/10) - REFRESH NÃO FUNCIONA
+   
+   Acessa: session.refreshToken
+   Existe: session.refresh_token
+   Arquivo: refresh-token-service.ts
+   Tempo: 10 min (fix com @map)
+
+⚠️  6. SEM RATE LIMITING REAL
+   Impacto: ALTO (7/10) - BRUTE FORCE POSSÍVEL
+   
+   Função existe mas não valida
+   Arquivo: helpers.ts:60
+   Tempo: 45 min (com Upstash Redis)
+
+⚠️  7. SEM VALIDAÇÃO CORS
+   Impacto: ALTO (8/10) - CSRF ATTACKS
+   
+   Qualquer origin pode fazer requisição
+   Todos os endpoints: /api/auth/*
+   Tempo: 30 min
+
+⚠️  8. SEM VALIDAÇÃO EM RESET PASSWORD
+   Impacto: ALTO (7/10) - SENHAS FRACAS ACEITAS
+   
+   Não valida:
+   - Expiração do token
+   - Força da nova senha
+   - Invalida sessões antigas
+   Arquivo: forgot-password-service.ts
+   Tempo: 20 min
+
+════════════════════════════════════════════════════════════════════════════════
+⚠️  PROBLEMAS MÉDIOS & BAIXOS
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️  9. TYPE ASSERTIONS SEM SEGURANÇA (Médio - 5/10)
+⚠️  10. HTTPCOOKIE INSEGURO EM DEV (Médio - 6/10)
+⚠️  11. SEM LOGGING DE SEGURANÇA (Médio - 6/10)
+ℹ️  12. DECODE JWT SEM VERIFICAÇÃO (Baixo - 3/10)
+
+════════════════════════════════════════════════════════════════════════════════
+📈 COMPATIBILIDADE COM TECNOLOGIAS
+════════════════════════════════════════════════════════════════════════════════
+
+Next.js 16              ❌ FALHA    (schema errado)
+Prisma 7.8              ❌ FALHA    (campos não mapeados)
+MySQL Hostinger         ❌ FALHA    (mesmos problemas)
+Vercel Deploy           ❌ FALHA    (conexões esgotadas)
+TypeScript 5.7          ⚠️  PARCIAL (type assertions)
+JWT/Segurança           ⚠️  PARCIAL (secret fraco)
+
+════════════════════════════════════════════════════════════════════════════════
+📊 GRÁFICO DE SCORES
+════════════════════════════════════════════════════════════════════════════════
+
+SEGURANÇA:        ████░░░░░░  35/100  (Crítica em múltiplas áreas)
+COMPATIBILIDADE:  ░░░░░░░░░░   0/100  (Completamente incompatível)
+CÓDIGO:           █████░░░░░  45/100  (Algumas boas práticas)
+PERFORMANCE:      ██░░░░░░░░  20/100  (Falha em produção)
+AUDITORIA:        ░░░░░░░░░░   0/100  (Sem logging)
+────────────────────────────────────────────
+GERAL:            ██░░░░░░░░  20/100  🔴 CRÍTICO
+
+════════════════════════════════════════════════════════════════════════════════
+⏱️  TIMELINE DE CORREÇÃO
+════════════════════════════════════════════════════════════════════════════════
+
+FASE 1: BLOQUEADORES (1 hora) 🔴
+├─ Schema Prisma @map():        30 min [████████░░]
+├─ Prisma Singleton:             15 min [████░░░░░░]
+├─ JWT_SECRET Validation:        10 min [███░░░░░░░]
+└─ Session ID Fix:               20 min [█████░░░░░]
+
+FASE 2: SEGURANÇA (2 horas) ⚠️
+├─ Rate Limiting:                45 min [███████░░░]
+├─ CORS Validation:              30 min [█████░░░░░]
+├─ Reset Password:               20 min [████░░░░░░]
+├─ Logging:                      60 min [██████████]
+└─ Type Safety:                  25 min [████░░░░░░]
+
+FASE 3: VALIDAÇÃO (1-2 horas)
+├─ Re-executar 149 testes
+└─ Code review
+
+TOTAL: 3-4 HORAS
+
+════════════════════════════════════════════════════════════════════════════════
+✅ ARQUIVOS PRINCIPAIS AFETADOS
+════════════════════════════════════════════════════════════════════════════════
+
+CRÍTICOS:
+├─ prisma/schema.prisma              ❌ @map() FALTANDO
+├─ lib/auth/login-service.ts         ❌ CAMPOS ERRADOS
+├─ lib/auth/jwt-service.ts           ❌ SECRET FRACO
+└─ (novo) lib/db.ts                  ❌ NÃO EXISTE
+
+ALTOS:
+├─ lib/auth/refresh-token-service.ts ⚠️  CAMPOS ERRADOS
+├─ lib/auth/helpers.ts               ⚠️  RATE LIMIT INCOMPLETO
+├─ app/api/auth/login/route.ts       ⚠️  COOKIE INSEGURO
+└─ app/api/auth/reset-password/*     ⚠️  SEM VALIDAÇÕES
+
+════════════════════════════════════════════════════════════════════════════════
+🎯 RECOMENDAÇÃO FINAL
+════════════════════════════════════════════════════════════════════════════════
+
+STATUS: 🔴 NÃO APROVADO PARA ETAPA 3
+
+MOTIVO:
+- 3 problemas críticos tornam o código não-funcional
+- Schema errado = nenhuma rota funciona
+- PrismaClient = falha em ~10 requisições
+- JWT Secret = segurança completamente comprometida
+
+AÇÃO RECOMENDADA:
+1. ✅ Corrigir 4 bloqueadores (1 hora)
+2. ✅ Re-executar 149 testes
+3. ✅ Validar aprovação
+4. ✅ DEPOIS prosseguir para ETAPA 3
+
+TEMPO TOTAL: 2-4 horas
+
+════════════════════════════════════════════════════════════════════════════════
+📚 DOCUMENTOS GERADOS
+════════════════════════════════════════════════════════════════════════════════
+
+1. AUDITORIA_TECNICA_ETAPA2.md (completo - 679 linhas)
+2. AUDITORIA_RESUMO_EXECUTIVO.md (visão geral)
+3. AUDITORIA_PLANO_ACAO.md (ações específicas)
+4. AUDITORIA_VISUAL.txt (este documento)
+
+════════════════════════════════════════════════════════════════════════════════
+🚀 PRÓXIMOS PASSOS
+════════════════════════════════════════════════════════════════════════════════
+
+1. Revisar AUDITORIA_RESUMO_EXECUTIVO.md (5 min)
+2. Revisar AUDITORIA_PLANO_ACAO.md (5 min)
+3. Decidir:
+   ✅ Corrigir antes de ETAPA 3 (RECOMENDADO)
+   ❌ Prosseguir mesmo assim (NÃO RECOMENDADO)
+
+════════════════════════════════════════════════════════════════════════════════
