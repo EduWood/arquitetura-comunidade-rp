@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ForgotPasswordService } from '@/lib/auth/forgot-password-service';
 import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { validateCORSMiddleware } from '@/lib/cors';
 
@@ -33,7 +32,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get client info
+    // Lazy load to avoid Prisma initialization in build
+    const { ForgotPasswordService } = await import('@/lib/auth/forgot-password-service');
     const ipAddress = SecurityHelper.getClientIP(request.headers);
 
     const result = await ForgotPasswordService.requestPasswordReset(
