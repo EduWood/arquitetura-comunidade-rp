@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const ADMIN_MENU = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -23,10 +24,32 @@ const ADMIN_MENU = [
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { usuario, loading, isAdmin, logout } = useAuth();
 
-  const handleLogout = () => {
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    router.push('/login');
+  // Redirecionar se não for admin
+  useEffect(() => {
+    if (!loading && (!usuario || !isAdmin)) {
+      router.push('/');
+    }
+  }, [loading, usuario, isAdmin, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -88,3 +111,4 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
