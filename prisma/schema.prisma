@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -39,7 +40,6 @@ model Usuario {
   usuario_downloads     UsuarioDownload[]
   suporte_tickets       SuporteTicket[]
   suporte_mensagens     SuporteMensagem[]
-  log_auditoria         LogAuditoria[]
   notificacoes_lidas    NotificacaoLida[]
 
   @@index([email])
@@ -107,7 +107,6 @@ model Curso {
   // Relacionamentos
   modulos               Modulo[]
   usuario_cursos        UsuarioCurso[]
-  log_auditoria         LogAuditoria[]
 
   @@index([categoria])
   @@index([publicado])
