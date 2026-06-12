@@ -59,6 +59,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('[AUTH] Erro ao registrar:', error);
+    
+    // Log do erro completo para debug
+    if (error instanceof Error) {
+      console.error('[AUTH] Detalhes do erro:', {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
 
     return NextResponse.json(
       ResponseHelper.error('INTERNAL_ERROR', 'Erro ao registrar usuário', 500),
