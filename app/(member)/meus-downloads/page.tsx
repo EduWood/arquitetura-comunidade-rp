@@ -9,12 +9,15 @@ import { Download, Calendar } from 'lucide-react';
 
 export default function DownloadsPage() {
   const router = useRouter();
-  const { logado } = useAuth();
+  const { logado, loading: authLoading, getAuthHeaders } = useAuth();
 
   const [downloads, setDownloads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Aguarda auth carregar antes de redirecionar
+    if (authLoading) return;
+
     if (!logado) {
       router.push('/login');
       return;
@@ -22,7 +25,9 @@ export default function DownloadsPage() {
 
     const carregarDownloads = async () => {
       try {
-        const res = await fetch('/api/me/downloads');
+        const res = await fetch('/api/me/downloads', {
+          headers: getAuthHeaders(),
+        });
         const data = await res.json();
         if (data.success) {
           setDownloads(data.data || []);
@@ -35,9 +40,9 @@ export default function DownloadsPage() {
     };
 
     carregarDownloads();
-  }, [logado, router]);
+  }, [logado, authLoading, router, getAuthHeaders]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

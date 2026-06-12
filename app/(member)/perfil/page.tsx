@@ -1,17 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function PerfilPage() {
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, getAuthHeaders } = useAuth();
   const [editando, setEditando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [mensagem, setMensagem] = useState('');
   const [formData, setFormData] = useState({
-    nome: usuario?.nome || '',
-    email: usuario?.email || '',
+    nome: '',
+    email: '',
   });
+
+  // Sincroniza formData quando usuario carrega
+  useEffect(() => {
+    if (usuario) {
+      setFormData({
+        nome: usuario.nome || '',
+        email: usuario.email || '',
+      });
+    }
+  }, [usuario]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -22,8 +34,33 @@ export default function PerfilPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implementar atualização de perfil
-    setEditando(false);
+    setSalvando(true);
+    setMensagem('');
+
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setMensagem('Perfil atualizado com sucesso!');
+        setEditando(false);
+      } else {
+        setMensagem(data.message || 'Erro ao salvar perfil.');
+      }
+    } catch (err) {
+      setMensagem('Erro de conexão. Tente novamente.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -45,15 +82,20 @@ export default function PerfilPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {mensagem && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${mensagem.includes('sucesso') ? 'bg-green-50 text-green-700' : 'bg-destructive/10 text-destructive'}`}>
+                {mensagem}
+              </div>
+            )}
             {!editando ? (
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Nome</p>
-                  <p className="font-semibold">{usuario?.nome}</p>
+                  <p className="font-semibold">{formData.nome || usuario?.nome || '—'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-semibold">{usuario?.email}</p>
+                  <p className="font-semibold">{formData.email || usuario?.email || '—'}</p>
                 </div>
                 <Button onClick={() => setEditando(true)} variant="outline">
                   Editar Perfil
@@ -82,8 +124,8 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    Salvar
+                  <Button type="submit" className="flex-1" disabled={salvando}>
+                    {salvando ? 'Salvando...' : 'Salvar'}
                   </Button>
                   <Button
                     type="button"

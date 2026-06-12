@@ -23,7 +23,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { usuario, loading } = useAuth();
+  const { usuario, loading, getAuthHeaders } = useAuth();
   const [dados, setDados] = useState<DashboardData | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -34,6 +34,7 @@ export default function DashboardPage() {
       try {
         const res = await fetch('/api/me/dashboard', {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         const data = await res.json();
         if (data.success) {
@@ -47,7 +48,8 @@ export default function DashboardPage() {
     };
 
     fetchDashboard();
-  }, [loading]);
+  }, [loading, getAuthHeaders]);
+
 
   if (loading || carregando) {
     return (

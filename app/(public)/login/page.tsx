@@ -34,6 +34,11 @@ export default function LoginPage() {
         return;
       }
 
+      // Salvar token no localStorage para uso pelo useAuth
+      if (data.data?.accessToken) {
+        localStorage.setItem('accessToken', data.data.accessToken);
+      }
+
       router.push('/dashboard');
     } catch (erro) {
       setErro('Erro de conexão. Tente novamente.');
