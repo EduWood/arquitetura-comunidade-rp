@@ -1,10 +1,19 @@
-import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
 import { JWTService } from './jwt-service';
 import { AuthError, AuthErrorCodes } from './errors';
 import { auditLoginSuccess, auditLoginFailure, auditLoginBlocked, extractIP } from '@/lib/audit-logger';
 import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/rate-limiting';
 import { nanoid } from 'nanoid';
+
+// Lazy load Prisma to avoid initialization during build
+let prismaInstance: any = null;
+async function getPrisma() {
+  if (!prismaInstance) {
+    const { prisma } = await import('@/lib/db');
+    prismaInstance = prisma;
+  }
+  return prismaInstance;
+}
 
 // ========================================
 // Login Service
@@ -22,6 +31,9 @@ export class LoginService {
     rememberMe: boolean = false,
     request?: Request
   ) {
+    // Get Prisma instance
+    const prisma = await getPrisma();
+
     // Check rate limiting
     const rateLimit = await checkLoginRateLimit(email);
     if (!rateLimit.success) {
