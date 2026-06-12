@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/middleware';
+import { verificarToken } from '@/lib/auth/token-verification';
 import { AuthService } from '@/lib/auth/auth-service';
 import { ResponseHelper } from '@/lib/auth/helpers';
 
-// GET /api/auth/me — alias para /api/auth/profile, usado pelo useAuth hook
+// GET /api/auth/me — retorna o perfil do usuário autenticado
 export async function GET(request: NextRequest) {
   try {
-    const { error, user } = await requireAuth(request);
+    // Verificar token diretamente do header
+    const tokenResult = await verificarToken(request);
 
-    if (error || !user) {
+    if (!tokenResult.valid || !tokenResult.usuarioId) {
       return NextResponse.json(
         ResponseHelper.error('UNAUTHORIZED', 'Não autenticado', 401),
         { status: 401 }
       );
     }
 
-    const userProfile = await AuthService.getUserProfile(user.userId);
+    const userProfile = await AuthService.getUserProfile(tokenResult.usuarioId);
 
     return NextResponse.json(
       ResponseHelper.success(userProfile, 'Perfil carregado'),
