@@ -1,0 +1,582 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTENTICAÇÃO E SEGURANÇA
+// ============================================================================
+
+model Usuario {
+  id                    String      @id @default(cuid())
+  nome                  String      @db.VarChar(255)
+  email                 String      @unique @db.VarChar(255)
+  senha_hash            String      @db.VarChar(500)
+  telefone              String?     @db.VarChar(20)
+  avatar_url            String?     @db.VarChar(500)
+  role                  Role        @default(MEMBRO)
+  status                StatusUsuario @default(ATIVO)
+  assinatura_ativa      Boolean     @default(false)
+  data_inicio_assinatura DateTime?
+  data_fim_assinatura   DateTime?
+  ultima_login          DateTime?
+  created_at            DateTime    @default(now())
+  updated_at            DateTime    @updatedAt
+  deleted_at            DateTime?
+
+  // Relacionamentos
+  sessoes               SessaoJWT[]
+  tokens_recuperacao    TokenRecuperacao[]
+  usuario_cursos        UsuarioCurso[]
+  usuario_aulas         UsuarioAula[]
+  usuario_downloads     UsuarioDownload[]
+  suporte_tickets       SuporteTicket[]
+  suporte_mensagens     SuporteMensagem[]
+  log_auditoria         LogAuditoria[]
+  notificacoes_lidas    NotificacaoLida[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([assinatura_ativa])
+}
+
+model SessaoJWT {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  token             String    @unique @db.VarChar(1000)
+  refresh_token     String    @unique @db.VarChar(1000)
+  ip_address        String?   @db.VarChar(45)
+  user_agent        String?   @db.Text
+  expires_at        DateTime
+  revogado          Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id])
+  @@index([expires_at])
+  @@index([revogado])
+}
+
+model TokenRecuperacao {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  token             String    @unique @db.VarChar(500)
+  usado             Boolean   @default(false)
+  expires_at        DateTime
+  created_at        DateTime  @default(now())
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id])
+  @@index([usado])
+  @@index([expires_at])
+}
+
+// ============================================================================
+// CURSOS E APRENDIZADO
+// ============================================================================
+
+model Curso {
+  id                    String      @id @default(cuid())
+  titulo                String      @db.VarChar(255)
+  descricao             String      @db.Text
+  descricao_curta       String      @db.VarChar(500)
+  imagem_url            String?     @db.VarChar(500)
+  preco                 Decimal     @default(0) @db.Decimal(10, 2)
+  preco_promocional     Decimal?    @db.Decimal(10, 2)
+  categoria             CategoriaCurso
+  nivel                 NivelCurso  @default(INICIANTE)
+  duracao_horas         Int?
+  ordem                 Int         @default(0)
+  publicado             Boolean     @default(false)
+  criado_em             DateTime    @default(now())
+  atualizado_em         DateTime    @updatedAt
+
+  // Relacionamentos
+  modulos               Modulo[]
+  usuario_cursos        UsuarioCurso[]
+  log_auditoria         LogAuditoria[]
+
+  @@index([categoria])
+  @@index([publicado])
+  @@index([criado_em])
+}
+
+model Modulo {
+  id                String    @id @default(cuid())
+  curso_id          String
+  titulo            String    @db.VarChar(255)
+  descricao         String?   @db.Text
+  ordem             Int       @default(0)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  curso             Curso     @relation(fields: [curso_id], references: [id], onDelete: Cascade)
+  aulas             Aula[]
+
+  @@index([curso_id])
+  @@index([ordem])
+}
+
+model Aula {
+  id                String    @id @default(cuid())
+  modulo_id         String
+  titulo            String    @db.VarChar(255)
+  descricao         String?   @db.Text
+  ordem             Int       @default(0)
+  duracao_minutos   Int?
+  liberada          Boolean   @default(false)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  modulo            Modulo    @relation(fields: [modulo_id], references: [id], onDelete: Cascade)
+  conteudo          AulaConteudo?
+  usuario_aulas     UsuarioAula[]
+
+  @@index([modulo_id])
+  @@index([ordem])
+  @@index([liberada])
+}
+
+model AulaConteudo {
+  id                String    @id @default(cuid())
+  aula_id           String    @unique
+  tipo_conteudo     TipoConteudo
+  video_id          String?
+  pdf_id            String?
+  texto_html        String?   @db.LongText
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  aula              Aula      @relation(fields: [aula_id], references: [id], onDelete: Cascade)
+  midia_video       MediaVideo? @relation(fields: [video_id], references: [id], onDelete: SetNull)
+  midia_pdf         MediaPDF? @relation(fields: [pdf_id], references: [id], onDelete: SetNull)
+
+  @@index([aula_id])
+  @@index([tipo_conteudo])
+}
+
+model UsuarioCurso {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  curso_id          String
+  progresso_pct     Int       @default(0)
+  concluido         Boolean   @default(false)
+  data_inscricao    DateTime  @default(now())
+  data_conclusao    DateTime?
+  atualizado_em     DateTime  @updatedAt
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  curso             Curso     @relation(fields: [curso_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, curso_id])
+  @@index([usuario_id])
+  @@index([curso_id])
+  @@index([concluido])
+}
+
+model UsuarioAula {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  aula_id           String
+  assistida         Boolean   @default(false)
+  tempo_asistido    Int?
+  data_conclusao    DateTime?
+  atualizado_em     DateTime  @updatedAt
+  criado_em         DateTime  @default(now())
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  aula              Aula      @relation(fields: [aula_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, aula_id])
+  @@index([usuario_id])
+  @@index([aula_id])
+  @@index([assistida])
+}
+
+// ============================================================================
+// MÍDIA E ARQUIVOS
+// ============================================================================
+
+model MediaImagem {
+  id                String    @id @default(cuid())
+  nome_original     String    @db.VarChar(255)
+  nome_arquivo      String    @unique @db.VarChar(255)
+  caminho_relativo  String    @db.VarChar(500)
+  url_publica       String    @db.VarChar(500)
+  tamanho_bytes     Int
+  tipo_mime         String    @db.VarChar(100)
+  largura           Int?
+  altura            Int?
+  criado_em         DateTime  @default(now())
+
+  // Relacionamentos para CMS
+  cms_blocos        CMSBlocoConteudo[]
+
+  @@index([criado_em])
+}
+
+model MediaPDF {
+  id                String    @id @default(cuid())
+  nome_original     String    @db.VarChar(255)
+  nome_arquivo      String    @unique @db.VarChar(255)
+  caminho_relativo  String    @db.VarChar(500)
+  url_publica       String    @db.VarChar(500)
+  tamanho_bytes     Int
+  paginas           Int?
+  criado_em         DateTime  @default(now())
+
+  // Relacionamentos
+  aula_conteudo     AulaConteudo[]
+  downloads         Download[]
+
+  @@index([criado_em])
+}
+
+model MediaVideo {
+  id                String    @id @default(cuid())
+  titulo            String    @db.VarChar(255)
+  descricao         String?   @db.Text
+  tipo_video        TipoVideo
+  video_url         String    @db.VarChar(500)
+  video_id          String?   @db.VarChar(255)
+  thumbnail_url     String?   @db.VarChar(500)
+  duracao_segundos  Int?
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  // Relacionamentos
+  aula_conteudo     AulaConteudo[]
+
+  @@index([tipo_video])
+  @@index([criado_em])
+}
+
+// ============================================================================
+// DOWNLOADS
+// ============================================================================
+
+model Download {
+  id                String    @id @default(cuid())
+  titulo            String    @db.VarChar(255)
+  descricao         String?   @db.Text
+  pdf_id            String
+  ordem             Int       @default(0)
+  ativo             Boolean   @default(true)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  midia_pdf         MediaPDF  @relation(fields: [pdf_id], references: [id], onDelete: Cascade)
+  usuario_downloads UsuarioDownload[]
+
+  @@index([pdf_id])
+  @@index([ativo])
+}
+
+model UsuarioDownload {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  download_id       String
+  baixado_em        DateTime  @default(now())
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  download          Download  @relation(fields: [download_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, download_id])
+  @@index([usuario_id])
+  @@index([download_id])
+}
+
+// ============================================================================
+// CMS - GERENCIAMENTO DE CONTEÚDO
+// ============================================================================
+
+model CMSConfiguracao {
+  id                    String    @id @default(cuid())
+  chave                 String    @unique @db.VarChar(100)
+  valor                 String    @db.LongText
+  tipo                  TipoConfiguracao
+  descricao             String?   @db.VarChar(500)
+  criado_em             DateTime  @default(now())
+  atualizado_em         DateTime  @updatedAt
+
+  @@index([chave])
+  @@index([tipo])
+}
+
+model CMSPagina {
+  id                String    @id @default(cuid())
+  titulo            String    @db.VarChar(255)
+  slug              String    @unique @db.VarChar(255)
+  descricao         String?   @db.Text
+  conteudo_html     String?   @db.LongText
+  seo_titulo        String?   @db.VarChar(255)
+  seo_descricao     String?   @db.VarChar(500)
+  seo_keywords      String?   @db.VarChar(500)
+  publicada         Boolean   @default(false)
+  ordem             Int       @default(0)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  secoes            CMSSecao[]
+
+  @@index([slug])
+  @@index([publicada])
+}
+
+model CMSSecao {
+  id                String    @id @default(cuid())
+  pagina_id         String
+  titulo            String    @db.VarChar(255)
+  tipo_secao        TipoSecao
+  ordem             Int       @default(0)
+  dados_json        String    @db.LongText
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  pagina            CMSPagina @relation(fields: [pagina_id], references: [id], onDelete: Cascade)
+  blocos            CMSBlocoConteudo[]
+
+  @@index([pagina_id])
+  @@index([tipo_secao])
+  @@index([ordem])
+}
+
+model CMSBlocoConteudo {
+  id                String    @id @default(cuid())
+  secao_id          String
+  titulo            String?   @db.VarChar(255)
+  conteudo_texto    String?   @db.LongText
+  imagem_id         String?
+  ordem             Int       @default(0)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  secao             CMSSecao  @relation(fields: [secao_id], references: [id], onDelete: Cascade)
+  imagem            MediaImagem? @relation(fields: [imagem_id], references: [id], onDelete: SetNull)
+
+  @@index([secao_id])
+  @@index([ordem])
+}
+
+model CMSDepoimento {
+  id                String    @id @default(cuid())
+  nome_aluno        String    @db.VarChar(255)
+  foto_url          String?   @db.VarChar(500)
+  conteudo          String    @db.Text
+  classificacao     Int       @default(5)
+  ativo             Boolean   @default(true)
+  ordem             Int       @default(0)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model CMSFAQ {
+  id                String    @id @default(cuid())
+  pergunta          String    @db.VarChar(500)
+  resposta          String    @db.LongText
+  ordem             Int       @default(0)
+  ativo             Boolean   @default(true)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  @@index([ativo])
+  @@index([ordem])
+}
+
+// ============================================================================
+// NOTIFICAÇÕES
+// ============================================================================
+
+model Notificacao {
+  id                String    @id @default(cuid())
+  titulo            String    @db.VarChar(255)
+  mensagem          String    @db.Text
+  tipo              TipoNotificacao
+  ativo             Boolean   @default(true)
+  ordem_exibicao    Int       @default(0)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+
+  notificacoes_lidas NotificacaoLida[]
+
+  @@index([ativo])
+  @@index([tipo])
+  @@index([criado_em])
+}
+
+model NotificacaoLida {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  notificacao_id    String
+  lida_em           DateTime  @default(now())
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  notificacao       Notificacao @relation(fields: [notificacao_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, notificacao_id])
+  @@index([usuario_id])
+  @@index([notificacao_id])
+}
+
+// ============================================================================
+// SUPORTE
+// ============================================================================
+
+model SuporteTicket {
+  id                String    @id @default(cuid())
+  usuario_id        String
+  titulo            String    @db.VarChar(255)
+  descricao         String    @db.Text
+  status            StatusTicket @default(ABERTO)
+  prioridade        Prioridade @default(NORMAL)
+  criado_em         DateTime  @default(now())
+  atualizado_em     DateTime  @updatedAt
+  fechado_em        DateTime?
+
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  mensagens         SuporteMensagem[]
+
+  @@index([usuario_id])
+  @@index([status])
+  @@index([prioridade])
+}
+
+model SuporteMensagem {
+  id                String    @id @default(cuid())
+  ticket_id         String
+  usuario_id        String
+  conteudo          String    @db.LongText
+  eh_resposta_admin Boolean   @default(false)
+  criado_em         DateTime  @default(now())
+
+  ticket            SuporteTicket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  usuario           Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([ticket_id])
+  @@index([usuario_id])
+}
+
+// ============================================================================
+// AUDITORIA
+// ============================================================================
+
+model LogAuditoria {
+  id                String    @id @default(cuid())
+  usuario_id        String?
+  acao              String    @db.VarChar(255)
+  tabela_afetada    String    @db.VarChar(100)
+  id_recurso        String?   @db.VarChar(100)
+  valores_antes     String?   @db.LongText
+  valores_depois    String?   @db.LongText
+  ip_address        String?   @db.VarChar(45)
+  user_agent        String?   @db.Text
+  criado_em         DateTime  @default(now())
+
+  usuario           Usuario?  @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+
+  @@index([usuario_id])
+  @@index([tabela_afetada])
+  @@index([criado_em])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MEMBRO
+}
+
+enum StatusUsuario {
+  ATIVO
+  INATIVO
+  BLOQUEADO
+  AGUARDANDO_VERIFICACAO
+}
+
+enum CategoriaCurso {
+  FOREX
+  CRIPTOMOEDAS
+  BOLSA
+  OPCOES
+  INVESTIMENTOS
+  EDUCACAO_FINANCEIRA
+  OUTRO
+}
+
+enum NivelCurso {
+  INICIANTE
+  INTERMEDIARIO
+  AVANCADO
+}
+
+enum TipoConteudo {
+  VIDEO
+  PDF
+  TEXTO
+  MISTO
+}
+
+enum TipoVideo {
+  YOUTUBE
+  VIMEO
+  BUNNY
+  EXTERNO
+}
+
+enum TipoConfiguracao {
+  STRING
+  NUMERO
+  BOOLEANO
+  JSON
+}
+
+enum TipoSecao {
+  HERO
+  BENEFICIOS
+  SOBRE
+  DEPOIMENTOS
+  FAQ
+  RODAPE
+  BANNER
+  CUSTOMIZADA
+}
+
+enum TipoNotificacao {
+  NOVA_AULA
+  MANUTENCAO
+  PROMOCAO
+  IMPORTANTE
+  OUTRA
+}
+
+enum StatusTicket {
+  ABERTO
+  EM_ANDAMENTO
+  AGUARDANDO_USUARIO
+  RESOLVIDO
+  FECHADO
+}
+
+enum Prioridade {
+  BAIXA
+  NORMAL
+  ALTA
+  CRITICA
+}
