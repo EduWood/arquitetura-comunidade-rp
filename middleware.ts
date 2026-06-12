@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default-secret-key'
+  process.env.JWT_SECRET!
 );
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not set');
+}
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -23,7 +27,10 @@ const PUBLIC_ROUTES = [
 const ADMIN_ROUTES = ['/admin'];
 
 // Routes that require member role
-const MEMBER_ROUTES = ['/member'];
+const MEMBER_ROUTES = ['/membros', '/dashboard', '/meus-cursos', '/certificados', '/meus-downloads', '/perfil'];
+
+// Subroutes under (member) group
+const MEMBER_SUBROUTES = ['/(member)'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -34,12 +41,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Get token from cookies
-  const token = request.cookies.get('token')?.value;
+  // Get token from cookies OR from Authorization header (Bearer token)
+  let token = request.cookies.get('token')?.value;
+  
+  // Also check Authorization header for Bearer token (from useAuth hook)
+  if (!token) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
 
   if (!token) {
     // If member or admin route and no token, redirect to login
-    if (pathname.startsWith('/member') || pathname.startsWith('/admin')) {
+    if (pathname.startsWith('/(member)') || pathname.startsWith('/admin') || 
+        MEMBER_ROUTES.some(route => pathname.startsWith(route))) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(loginUrl);
@@ -59,9 +75,9 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Check if user has required role for member routes
-    if (pathname.startsWith('/member')) {
-      if (!payload.role || !['SUPER_ADMIN', 'ADMIN', 'MEMBRO'].includes(payload.role)) {
+    // Check if user has required role for member routes (check both /member and /(member) patterns)
+    if (pathname.startsWith('/(member)') || MEMBER_ROUTES.some(route => pathname.startsWith(route))) {
+      if (!payload.role || !['SUPER_ADMIN', 'ADMIN', 'MEMBRO', 'ALUNO'].includes(payload.role)) {
         return NextResponse.redirect(new URL('/login', request.url));
       }
     }
@@ -79,7 +95,8 @@ export async function middleware(request: NextRequest) {
     });
   } catch (error) {
     // Invalid token
-    if (pathname.startsWith('/member') || pathname.startsWith('/admin')) {
+    if (pathname.startsWith('/(member)') || pathname.startsWith('/admin') ||
+        MEMBER_ROUTES.some(route => pathname.startsWith(route))) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(loginUrl);
