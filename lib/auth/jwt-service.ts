@@ -15,23 +15,24 @@ export class JWTService {
   private static expiration: string;
   private static refreshExpiration: string;
 
-  static {
-    // Validate JWT_SECRET is configured
-    if (!process.env.JWT_SECRET) {
-      throw new Error(
-        'CRITICAL: JWT_SECRET environment variable is required. Add JWT_SECRET to your .env file.'
-      );
+  private static initializeSecret(): void {
+    if (!this.secret) {
+      if (!process.env.JWT_SECRET) {
+        throw new Error(
+          'CRITICAL: JWT_SECRET environment variable is required. Add JWT_SECRET to your .env file.'
+        );
+      }
+      this.secret = process.env.JWT_SECRET;
+      this.expiration = process.env.JWT_EXPIRATION || '24h';
+      this.refreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '7d';
     }
-
-    this.secret = process.env.JWT_SECRET;
-    this.expiration = process.env.JWT_EXPIRATION || '24h';
-    this.refreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '7d';
   }
 
   /**
    * Generate Access Token
    */
   static generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
+    this.initializeSecret();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (jwt.sign as any)(
       payload,
@@ -47,6 +48,7 @@ export class JWTService {
    * Generate Refresh Token
    */
   static generateRefreshToken(payload: Omit<JWTRefreshPayload, 'iat' | 'exp'>): string {
+    this.initializeSecret();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (jwt.sign as any)(
       payload,
@@ -62,6 +64,7 @@ export class JWTService {
    * Verify Access Token
    */
   static verifyAccessToken(token: string): JWTPayload | null {
+    this.initializeSecret();
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ['HS256'],
@@ -76,6 +79,7 @@ export class JWTService {
    * Verify Refresh Token
    */
   static verifyRefreshToken(token: string): JWTRefreshPayload | null {
+    this.initializeSecret();
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ['HS256'],
