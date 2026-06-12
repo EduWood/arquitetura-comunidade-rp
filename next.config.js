@@ -10,10 +10,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-
-  // Ignore Prisma warnings
-  serverComponentsExternalPackages: ['@prisma/client'],
 };
 
 module.exports = nextConfig;
+
 
