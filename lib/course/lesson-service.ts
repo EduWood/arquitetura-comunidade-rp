@@ -18,8 +18,6 @@ export class LessonService {
         },
         include: {
           modulo: { select: { id: true, titulo: true } },
-          videos: { where: { ativo: true } },
-          materiais: { where: { ativo: true } },
         },
       });
 
@@ -65,7 +63,6 @@ export class LessonService {
       console.error('[LessonService] Erro ao obter:', error);
       return { success: false, error: 'Aula não encontrada' };
     }
-  }
   }
 
   /**
