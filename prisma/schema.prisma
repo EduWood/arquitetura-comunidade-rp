@@ -33,6 +33,7 @@ model Usuario {
   // Relacionamentos
   sessoes               SessaoJWT[]
   tokens_recuperacao    TokenRecuperacao[]
+  log_auditoria         LogAuditoria[]
   usuario_cursos        UsuarioCurso[]
   usuario_aulas         UsuarioAula[]
   usuario_downloads     UsuarioDownload[]
