@@ -245,7 +245,11 @@ export class CourseProgressService {
       progresso.curso.modulos.forEach((mod) => {
         mod.aulas.forEach((aula) => {
           totalAulas++;
-          if (aula.assistida) {
+          // Verificar se aula foi assistida pelo usuário
+          const aulaUsuario = aula.usuario_aulas?.find(
+            (ua) => ua.usuario_id === userId && ua.assistida
+          );
+          if (aulaUsuario) {
             aulasCompletas++;
           }
         });
@@ -278,6 +282,9 @@ export class CourseProgressService {
         orderBy: { atualizado_em: 'desc' },
       });
 
+      // Contar cursos concluídos e em progresso
+      const concluidos = cursos.filter((c) => c.concluido).length;
+      const emProgresso = cursos.filter((c) => !c.concluido).length;
 
       return {
         success: true,
