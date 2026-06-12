@@ -10,7 +10,9 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ["bcryptjs", "nodemailer", "prisma", "@prisma/client"],
+    // `serverComponentsExternalPackages` was renamed to `serverExternalPackages` in Next 15
+    // See: https://nextjs.org/docs/messages/invalid-next-config
+    serverExternalPackages: ["bcryptjs", "nodemailer", "prisma", "@prisma/client"],
   },
 }
 
