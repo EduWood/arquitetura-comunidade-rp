@@ -107,7 +107,6 @@ export class CourseAccessService {
         },
         skip,
         take,
-        orderBy: { criado_em: 'desc' },
       });
 
       return { success: true, data: bloqueados };
@@ -156,11 +155,8 @@ export class CourseAccessService {
         data: {
           usuario_id: userId,
           curso_id: courseId,
-          progresso_pct,
-          concluido,
-          status: 'ATIVO' as any,
-          data_inicio: new Date(),
-          criado_em: new Date(),
+          progresso_pct: 0,
+          concluido: false,
           atualizado_em: new Date(),
         },
       });

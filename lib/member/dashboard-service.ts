@@ -75,7 +75,6 @@ export class DashboardService {
           descricao: uc.curso.descricao,
           categoria: uc.curso.categoria,
           progresso: uc.progresso_pct,
-          status: uc.status,
           atualizado_em: uc.atualizado_em,
         })),
       };
@@ -133,7 +132,6 @@ export class DashboardService {
       const cursos = await prisma.usuarioCurso.findMany({
         where: {
           usuario_id: userId,
-          status: { in: ['NAO_INICIADO', 'EM_PROGRESSO'] as any },
         },
         include: {
           curso: {
@@ -159,7 +157,6 @@ export class DashboardService {
           categoria: uc.curso.categoria,
           progresso: uc.progresso_pct,
           modulos_total: uc.curso._count.modulos,
-          data_inicio: uc.data_inicio,
         })),
       };
     } catch (error) {
@@ -260,7 +257,6 @@ export class DashboardService {
           id: true,
           email: true,
           nome: true,
-          criado_em: true,
         },
       });
 

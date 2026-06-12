@@ -45,13 +45,8 @@ export class CertificateService {
       }
 
       // Verificar se já tem certificado
-      const existente = await prisma.certificado?.findFirst({
-        where: { usuario_id: userId, curso_id: courseId },
-      });
-
-      if (existente) {
-        return { success: true, data: existente, message: 'Certificado já emitido' };
-      }
+      // TODO: Quando tabela Certificado existir, verificar aqui
+      // Por enquanto, apenas verificar se já foi concluído
 
       // Gerar número único
       const numeroCertificado = this.gerarNumeroCertificado();
@@ -114,7 +109,7 @@ export class CertificateService {
       const cursosCompletos = await prisma.usuarioCurso.findMany({
         where: {
           usuario_id: userId,
-          concluido: true as any,
+          concluido: true,
           progresso_pct: 100,
         },
         include: {

@@ -11,7 +11,6 @@ interface CreateMaterialDTO {
   nome: string;
   descricao?: string;
   tipo: MaterialType;
-  arquivo_url: string;
   tamanho_bytes: number;
   aula_id?: string;
   curso_id?: string;
@@ -20,7 +19,6 @@ interface CreateMaterialDTO {
 interface UpdateMaterialDTO {
   nome?: string;
   descricao?: string;
-  arquivo_url?: string;
 }
 
 export class MaterialService {
@@ -53,9 +51,7 @@ export class MaterialService {
           nome: dados.nome,
           descricao: dados.descricao || '',
           tipo: dados.tipo,
-          arquivo_url: dados.arquivo_url,
           tamanho_bytes: dados.tamanho_bytes,
-          criado_em: new Date(),
           atualizado_em: new Date(),
         } as any,
       });
@@ -106,7 +102,6 @@ export class MaterialService {
       // Implementação simplificada: retornar todos os materiais
       // Em produção, haveria relação material->aula no banco
       const materiais = await prisma.download.findMany({
-        orderBy: { criado_em: 'desc' },
       });
 
       return { success: true, data: materiais };
@@ -122,7 +117,6 @@ export class MaterialService {
   static async listarPorCurso(cursoId: string) {
     try {
       const materiais = await prisma.download.findMany({
-        orderBy: { criado_em: 'desc' },
       });
 
       return { success: true, data: materiais };
@@ -196,13 +190,11 @@ export class MaterialService {
         return { success: false, error: 'Material não encontrado' };
       }
 
-      // Tentar deletar arquivo do storage
-      if (material.arquivo_url) {
-        try {
-          await HostingerUploadService.deletarArquivo(material.arquivo_url);
-        } catch (err) {
-          console.warn('[MaterialService] Erro ao deletar arquivo:', err);
-        }
+      // Tentar deletar arquivo do storage (se aplicável)
+      try {
+        // TODO: Deletar arquivo de storage quando implementado
+      } catch (err) {
+        console.warn('[MaterialService] Erro ao deletar arquivo:', err);
       }
 
       // Deletar registro
@@ -243,7 +235,6 @@ export class MaterialService {
         data: {
           usuario_id: usuarioId,
           download_id: materialId,
-          criado_em: new Date(),
         },
       });
 

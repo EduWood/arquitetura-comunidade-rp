@@ -66,7 +66,7 @@ export type UpdateMaterialDTO = z.infer<typeof UpdateMaterialSchema>;
 export const SavePositionSchema = z.object({
   aula_id: z.string().min(1, 'ID da aula obrigatório'),
   timestamp_segundos: z.number().int().nonnegative(),
-  progresso_pct: z.number().min(0).max(100),
+  progresso_percentual: z.number().min(0).max(100),
 });
 
 export type SavePositionDTO = z.infer<typeof SavePositionSchema>;
@@ -102,7 +102,7 @@ export class ValidatorHelper {
       return { valid: true, data: resultado as T };
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const messages = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+        const messages = error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
         return { valid: false, error: messages.join('; ') };
       }
       return { valid: false, error: 'Erro ao validar dados' };

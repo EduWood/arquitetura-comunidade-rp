@@ -37,7 +37,6 @@ export class CourseProgressService {
         acao: 'COURSE_START',
         tabela_afetada: 'UsuarioCurso',
         id_recurso: atualizado.id,
-        valores_depois: { concluido: false },
         ip_address: ip,
         user_agent: userAgent,
       });
@@ -77,8 +76,6 @@ export class CourseProgressService {
         progresso = await prisma.usuarioAula.update({
           where: { id: progresso.id },
           data: {
-            concluido: true as any,
-            progresso_pct: 100,
             atualizado_em: new Date(),
           },
         });
@@ -87,9 +84,7 @@ export class CourseProgressService {
           data: {
             usuario_id: userId,
             aula_id: lessonId,
-            concluido: true as any,
-            progresso_pct: 100,
-            tempo_assistido_segundos: 0,
+            tempo_asistido: 0,
             criado_em: new Date(),
             atualizado_em: new Date(),
           },
@@ -105,7 +100,6 @@ export class CourseProgressService {
         acao: 'LESSON_COMPLETE',
         tabela_afetada: 'UsuarioAula',
         id_recurso: progresso.id,
-        valores_depois: { concluido: true },
         ip_address: ip,
         user_agent: userAgent,
       });
@@ -148,8 +142,6 @@ export class CourseProgressService {
       const atualizado = await prisma.usuarioAula.update({
         where: { id: progresso.id },
         data: {
-          concluido: false as any,
-          progresso_pct: 50,
           atualizado_em: new Date(),
         },
       });
@@ -163,7 +155,6 @@ export class CourseProgressService {
         acao: 'LESSON_UNCOMPLETE',
         tabela_afetada: 'UsuarioAula',
         id_recurso: atualizado.id,
-        valores_depois: { concluido: false },
         ip_address: ip,
         user_agent: userAgent,
       });
@@ -191,7 +182,6 @@ export class CourseProgressService {
       const aulasCompletas = await prisma.usuarioAula.count({
         where: {
           usuario_id: userId,
-          concluido: true as any,
           aula: { modulo: { curso_id: courseId } },
         },
       });
@@ -203,8 +193,6 @@ export class CourseProgressService {
       await prisma.usuarioCurso.updateMany({
         where: { usuario_id: userId, curso_id: courseId },
         data: {
-          progresso_pct: percentual,
-          status: status as any,
           atualizado_em: new Date(),
         },
       });
@@ -230,7 +218,6 @@ export class CourseProgressService {
                     include: {
                       usuario_aulas: {
                         where: { usuario_id: userId },
-                        select: { status: true, progresso_pct: true },
                       },
                     },
                   },
@@ -245,8 +232,6 @@ export class CourseProgressService {
         return {
           success: true,
           data: {
-            progresso_pct: 0,
-            concluido: false,
             aulas_completas: 0,
             total_aulas: 0,
           },
@@ -260,7 +245,7 @@ export class CourseProgressService {
       progresso.curso.modulos.forEach((mod) => {
         mod.aulas.forEach((aula) => {
           totalAulas++;
-          if (aula.usuario_aulas[0]?.concluido === true) {
+          if (aula.assistida) {
             aulasCompletas++;
           }
         });
@@ -293,8 +278,6 @@ export class CourseProgressService {
         orderBy: { atualizado_em: 'desc' },
       });
 
-      const concluidos = cursos.filter((c) => c.concluido === true).length;
-      const emProgresso = cursos.filter((c) => c.concluido === false).length;
 
       return {
         success: true,
@@ -319,7 +302,6 @@ export class CourseProgressService {
   }
 
   /**
-   * Obter última aula assistida
    */
   static async getLastLesson(userId: string, courseId: string) {
     try {

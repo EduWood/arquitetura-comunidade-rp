@@ -20,7 +20,7 @@ export class ContinueWatchingService {
     progressoPercentual: number
   ) {
     try {
-      // Atualizar progresso da aula
+      // Atualizar progresso da aula (nota: schema usa tempo_asistido com typo)
       const progresso = await prisma.usuarioAula.findFirst({
         where: { usuario_id: userId, aula_id: aulaId },
       });
@@ -29,8 +29,7 @@ export class ContinueWatchingService {
         const atualizado = await prisma.usuarioAula.update({
           where: { id: progresso.id },
           data: {
-            tempo_assistido_segundos: timestampSegundos,
-            progresso_pct: progressoPercentual,
+            tempo_asistido: timestampSegundos, // Schema field name (com typo)
             atualizado_em: new Date(),
           },
         });
@@ -41,9 +40,8 @@ export class ContinueWatchingService {
           data: {
             usuario_id: userId,
             aula_id: aulaId,
-            tempo_assistido_segundos: timestampSegundos,
-            progresso_pct: progressoPercentual,
-            concluido: false as any,
+            tempo_asistido: timestampSegundos,
+            assistida: false,
             criado_em: new Date(),
             atualizado_em: new Date(),
           },
@@ -76,26 +74,8 @@ export class ContinueWatchingService {
       const emProgresso = await prisma.usuarioAula.findMany({
         where: {
           usuario_id: userId,
-          status: { in: ['EM_PROGRESSO', 'NAO_INICIADO'] as any },
-          tempo_assistido_segundos: { gt: 0 }, // Apenas que iniciou
-        },
-        include: {
-          aula: {
-            select: {
-              id: true,
-              titulo: true,
-              descricao: true,
-              modulo_id: true,
-              modulo: {
-                select: {
-                  id: true,
-                  titulo: true,
-                  curso_id: true,
-                  curso: { select: { id: true, titulo: true } },
-                },
-              },
-            },
-          },
+          assistida: false,
+          tempo_asistido: { gt: 0 }, // Apenas que iniciou
         },
         orderBy: { atualizado_em: 'desc' },
         take: limit,
@@ -105,13 +85,8 @@ export class ContinueWatchingService {
         success: true,
         data: emProgresso.map((ua) => ({
           aula_id: ua.aula_id,
-          aula_titulo: ua.aula.titulo,
-          modulo_id: ua.aula.modulo_id,
-          modulo_titulo: ua.aula.modulo.titulo,
-          curso_id: ua.aula.modulo.curso_id,
-          curso_titulo: ua.aula.modulo.curso.titulo,
-          timestamp_segundos: ua.tempo_assistido_segundos,
-          progresso_pct: ua.progresso_pct,
+          timestamp_segundos: ua.tempo_asistido || 0,
+          progresso_pct: 0, // Calculado separadamente via UsuarioCurso
           atualizado_em: ua.atualizado_em,
         })),
       };
@@ -143,8 +118,8 @@ export class ContinueWatchingService {
       return {
         success: true,
         data: {
-          timestamp_segundos: progresso.tempo_assistido_segundos || 0,
-          progresso_pct: progresso.progresso_pct,
+          timestamp_segundos: progresso.tempo_asistido || 0,
+          progresso_pct: 0, // Calculado via UsuarioCurso
         },
       };
     } catch (error) {
@@ -160,7 +135,7 @@ export class ContinueWatchingService {
     try {
       await prisma.usuarioAula.updateMany({
         where: { usuario_id: userId, aula_id: lessonId },
-        data: { tempo_assistido_segundos: 0 },
+        data: { tempo_asistido: 0 },
       });
 
       return { success: true };
