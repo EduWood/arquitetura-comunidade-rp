@@ -1,8 +1,17 @@
-import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
 import { AuthError, AuthErrorCodes } from './errors';
 import { auditPasswordReset, checkPasswordResetRateLimit } from '@/lib/audit-logger';
 import crypto from 'crypto';
+
+// Lazy load Prisma to avoid initialization during build
+let prismaInstance: any = null;
+async function getPrisma() {
+  if (!prismaInstance) {
+    const { prisma } = await import('@/lib/db');
+    prismaInstance = prisma;
+  }
+  return prismaInstance;
+}
 
 // ========================================
 // Forgot Password Service
@@ -22,6 +31,7 @@ export class ForgotPasswordService {
       };
     }
 
+    const prisma = await getPrisma();
     const user = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -63,6 +73,7 @@ export class ForgotPasswordService {
    */
   static async verifyResetToken(token: string): Promise<{ userId: string; email: string }> {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const prisma = await getPrisma();
 
     const resetToken = await prisma.tokenRecuperacao.findFirst({
       where: {
@@ -120,6 +131,7 @@ export class ForgotPasswordService {
 
     // Verify token and get user
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const prisma = await getPrisma();
 
     const resetToken = await prisma.tokenRecuperacao.findFirst({
       where: {

@@ -1,4 +1,12 @@
-import { prisma } from './db';
+// Lazy load Prisma to avoid initialization during build
+let prismaInstance: any = null;
+async function getPrisma() {
+  if (!prismaInstance) {
+    const { prisma } = await import('./db');
+    prismaInstance = prisma;
+  }
+  return prismaInstance;
+}
 
 export enum AuditAction {
   LOGIN_SUCCESS = 'LOGIN_SUCCESS',
@@ -32,6 +40,7 @@ export interface AuditLog {
  */
 export async function auditLog(log: AuditLog): Promise<void> {
   try {
+    const prisma = await getPrisma();
     await prisma.logAuditoria.create({
       data: {
         usuario_id: log.usuario_id || null,
