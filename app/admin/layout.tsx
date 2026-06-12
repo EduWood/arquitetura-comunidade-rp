@@ -1,63 +1,109 @@
-import { ReactNode } from 'react';
-import Link from 'next/link';
+import type { ReactNode } from "react";
+import Link from "next/link";
 
-const ADMIN_MENU = [
-  { href: '/admin', label: 'Dashboard', icon: '📊' },
-  { href: '/admin/users', label: 'Usuários', icon: '👥' },
-  { href: '/admin/courses', label: 'Cursos', icon: '📚' },
-  { href: '/admin/modules', label: 'Módulos', icon: '📖' },
-  { href: '/admin/lessons', label: 'Aulas', icon: '🎬' },
-  { href: '/admin/enrollments', label: 'Matrículas', icon: '✍️' },
-  { href: '/admin/certs', label: 'Certificados', icon: '🏆' },
-  { href: '/admin/cms', label: 'CMS', icon: '📄' },
-  { href: '/admin/storage', label: 'Arquivos', icon: '📁' },
-  { href: '/admin/reports', label: 'Relatórios', icon: '📈' },
-  { href: '/admin/logs', label: 'Auditoria', icon: '🔐' },
-  { href: '/admin/help', label: 'Suporte', icon: '💬' },
+const menu = [
+  { name: "Dashboard", href: "/admin", icon: "◈" },
+  { name: "Usuários", href: "/admin/users", icon: "◉" },
+  { name: "Cursos", href: "/admin/courses", icon: "◈" },
+  { name: "Módulos", href: "/admin/modules", icon: "◉" },
+  { name: "Aulas", href: "/admin/lessons", icon: "◈" },
+  { name: "Matrículas", href: "/admin/enrollments", icon: "◉" },
+  { name: "Certificados", href: "/admin/certs", icon: "◈" },
+  { name: "CMS", href: "/admin/cms", icon: "◉" },
+  { name: "Arquivos", href: "/admin/storage", icon: "◈" },
+  { name: "Relatórios", href: "/admin/reports", icon: "◉" },
+  { name: "Logs", href: "/admin/logs", icon: "◈" },
+  { name: "Suporte", href: "/admin/help", icon: "◉" },
 ];
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <div className="w-64 border-r bg-card overflow-y-auto">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Admin</h1>
-          <p className="text-sm text-muted-foreground">COMUNIDADE RP</p>
+    <div className="min-h-screen bg-[#09090b] text-white flex">
+      {/* SIDEBAR */}
+      <aside className="w-72 border-r border-zinc-800 bg-[#0f0f12] flex flex-col">
+        <div className="p-8 border-b border-zinc-800">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center font-bold">
+              RP
+            </div>
+
+            <div>
+              <h1 className="font-bold text-lg">
+                Comunidade RP
+              </h1>
+
+              <p className="text-xs text-zinc-500">
+                Painel Administrativo
+              </p>
+            </div>
+          </div>
         </div>
 
-        <nav className="space-y-2 px-3">
-          {ADMIN_MENU.map((item) => (
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {menu.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-muted"
+              className="
+                flex items-center gap-3
+                px-4 py-3
+                rounded-xl
+                text-zinc-400
+                transition-all
+                hover:bg-zinc-800
+                hover:text-white
+              "
             >
-              <span>{item.icon}</span>
-              {item.label}
+              <span className="text-zinc-500">
+                {item.icon}
+              </span>
+
+              <span>{item.name}</span>
             </Link>
           ))}
         </nav>
-      </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="border-b bg-card px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Admin Panel</h2>
-            <div className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('pt-BR')}
-            </div>
+        <div className="p-4 border-t border-zinc-800">
+          <div className="rounded-xl bg-zinc-900 p-4">
+            <p className="font-medium">
+              Administrador
+            </p>
+
+            <p className="text-sm text-zinc-500">
+              Painel Online
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* CONTEÚDO */}
+      <div className="flex-1 flex flex-col">
+        {/* HEADER */}
+        <header className="h-20 border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur flex items-center justify-between px-8">
+          <div>
+            <h2 className="font-semibold text-lg">
+              Dashboard Administrativo
+            </h2>
+
+            <p className="text-sm text-zinc-500">
+              Gestão completa da plataforma
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-violet-500 to-blue-500" />
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-auto p-6">
+        {/* MAIN */}
+        <main className="flex-1 p-8 overflow-y-auto">
           {children}
         </main>
       </div>
     </div>
   );
 }
-

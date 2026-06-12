@@ -7,11 +7,15 @@ export default function MemberLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen bg-[#070707]">
       <Navbar />
-      <div className="flex flex-1">
+
+      <div className="max-w-[1700px] mx-auto flex">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+
+        <main className="flex-1 p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

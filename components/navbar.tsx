@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, GraduationCap } from 'lucide-react';
 import { useState } from 'react';
 
 export function Navbar() {
@@ -11,127 +11,94 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
-      <nav className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-primary">
-          <div className="h-8 w-8 rounded bg-primary"></div>
-          Comunidade RP
+    <header className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-xl bg-black/50">
+      <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 h-20">
+        
+        <Link
+          href="/"
+          className="flex items-center gap-3"
+        >
+          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+
+          <div>
+            <p className="font-bold text-lg text-white">
+              Comunidade RP
+            </p>
+
+            <p className="text-xs text-zinc-500">
+              Plataforma Premium
+            </p>
+          </div>
         </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link href="/cursos" className="text-sm font-medium hover:text-primary transition">
+        <div className="hidden lg:flex items-center gap-8">
+          <Link href="/cursos" className="text-zinc-400 hover:text-white transition">
             Cursos
           </Link>
-          <Link href="/sobre" className="text-sm font-medium hover:text-primary transition">
+
+          <Link href="/sobre" className="text-zinc-400 hover:text-white transition">
             Sobre
           </Link>
-          <Link href="/contato" className="text-sm font-medium hover:text-primary transition">
+
+          <Link href="/contato" className="text-zinc-400 hover:text-white transition">
             Contato
           </Link>
         </div>
 
-        {/* Auth Buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-3">
           {!logado ? (
             <>
               <Link href="/login">
-                <Button variant="ghost">Entrar</Button>
+                <Button variant="ghost">
+                  Entrar
+                </Button>
               </Link>
+
               <Link href="/registro">
-                <Button>Criar Conta</Button>
+                <Button>
+                  Criar Conta
+                </Button>
               </Link>
             </>
           ) : (
             <>
               <Link href="/dashboard">
-                <Button variant="outline">{usuario?.nome}</Button>
+                <Button variant="outline">
+                  {usuario?.nome}
+                </Button>
               </Link>
+
               {isAdmin && (
                 <Link href="/admin">
-                  <Button variant="ghost" size="sm">Admin</Button>
+                  <Button>
+                    Painel Admin
+                  </Button>
                 </Link>
               )}
+
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={logout}
-                className="flex items-center gap-2"
               >
                 <LogOut className="h-4 w-4" />
-                Sair
               </Button>
             </>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <button
-          className="md:hidden"
+          className="lg:hidden"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? (
-            <X className="h-6 w-6" />
+            <X />
           ) : (
-            <Menu className="h-6 w-6" />
+            <Menu />
           )}
         </button>
       </nav>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border px-4 py-4">
-          <div className="flex flex-col gap-4">
-            <Link
-              href="/cursos"
-              className="text-sm font-medium hover:text-primary"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Cursos
-            </Link>
-            <Link
-              href="/sobre"
-              className="text-sm font-medium hover:text-primary"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Sobre
-            </Link>
-            <Link
-              href="/contato"
-              className="text-sm font-medium hover:text-primary"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Contato
-            </Link>
-            <div className="flex gap-2 pt-4 border-t border-border">
-              {!logado ? (
-                <>
-                  <Link href="/login" className="flex-1">
-                    <Button variant="ghost" className="w-full">
-                      Entrar
-                    </Button>
-                  </Link>
-                  <Link href="/registro" className="flex-1">
-                    <Button className="w-full">Criar Conta</Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link href="/dashboard" className="flex-1">
-                    <Button variant="outline" className="w-full">
-                      Dashboard
-                    </Button>
-                  </Link>
-                  <Button variant="ghost" onClick={logout} className="flex-1">
-                    Sair
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
