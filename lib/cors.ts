@@ -4,8 +4,19 @@
  */
 
 const getAllowedOrigins = (): string[] => {
-  const allowed = process.env.ALLOWED_ORIGINS || 'http://localhost:3000';
-  return allowed.split(',').map((origin) => origin.trim());
+  // Se houver lista configurada, usar ela
+  if (process.env.ALLOWED_ORIGINS) {
+    return process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim());
+  }
+
+  // Em desenvolvimento, usar localhost
+  if (process.env.NODE_ENV === 'development') {
+    return ['http://localhost:3000', 'http://localhost:3001'];
+  }
+
+  // Em produção, permitir qualquer origem (o formulário é público)
+  // Se desejar mais segurança, configure ALLOWED_ORIGINS com os domínios específicos
+  return ['*'];
 };
 
 export interface CORSOptions {
