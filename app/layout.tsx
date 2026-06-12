@@ -10,24 +10,18 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Comunidade RP - Plataforma de Cursos Online',
+  description: 'Aprenda roleplay, produção e criação de conteúdo com os melhores instrutores',
+  keywords: 'cursos online, roleplay, produção de vídeo, comunidade',
+  authors: [{ name: 'Comunidade RP' }],
+  openGraph: {
+    title: 'Comunidade RP - Plataforma de Cursos',
+    description: 'Aprenda com os melhores instrutores da comunidade',
+    type: 'website',
+    locale: 'pt_BR',
+  },
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/favicon.ico',
     apple: '/apple-icon.png',
   },
 }
