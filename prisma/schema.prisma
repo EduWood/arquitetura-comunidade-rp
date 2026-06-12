@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -156,7 +156,7 @@ model AulaConteudo {
   tipo_conteudo     TipoConteudo
   video_id          String?
   pdf_id            String?
-  texto_html        String?   @db.LongText
+  texto_html        String?   @db.Text
   criado_em         DateTime  @default(now())
   atualizado_em     DateTime  @updatedAt
 
@@ -306,7 +306,7 @@ model UsuarioDownload {
 model CMSConfiguracao {
   id                    String    @id @default(cuid())
   chave                 String    @unique @db.VarChar(100)
-  valor                 String    @db.LongText
+  valor                 String    @db.Text
   tipo                  TipoConfiguracao
   descricao             String?   @db.VarChar(500)
   criado_em             DateTime  @default(now())
@@ -321,7 +321,7 @@ model CMSPagina {
   titulo            String    @db.VarChar(255)
   slug              String    @unique @db.VarChar(255)
   descricao         String?   @db.Text
-  conteudo_html     String?   @db.LongText
+  conteudo_html     String?   @db.Text
   seo_titulo        String?   @db.VarChar(255)
   seo_descricao     String?   @db.VarChar(500)
   seo_keywords      String?   @db.VarChar(500)
@@ -342,7 +342,7 @@ model CMSSecao {
   titulo            String    @db.VarChar(255)
   tipo_secao        TipoSecao
   ordem             Int       @default(0)
-  dados_json        String    @db.LongText
+  dados_json        String    @db.Text
   criado_em         DateTime  @default(now())
   atualizado_em     DateTime  @updatedAt
 
@@ -358,7 +358,7 @@ model CMSBlocoConteudo {
   id                String    @id @default(cuid())
   secao_id          String
   titulo            String?   @db.VarChar(255)
-  conteudo_texto    String?   @db.LongText
+  conteudo_texto    String?   @db.Text
   imagem_id         String?
   ordem             Int       @default(0)
   criado_em         DateTime  @default(now())
@@ -389,7 +389,7 @@ model CMSDepoimento {
 model CMSFAQ {
   id                String    @id @default(cuid())
   pergunta          String    @db.VarChar(500)
-  resposta          String    @db.LongText
+  resposta          String    @db.Text
   ordem             Int       @default(0)
   ativo             Boolean   @default(true)
   criado_em         DateTime  @default(now())
@@ -461,7 +461,7 @@ model SuporteMensagem {
   id                String    @id @default(cuid())
   ticket_id         String
   usuario_id        String
-  conteudo          String    @db.LongText
+  conteudo          String    @db.Text
   eh_resposta_admin Boolean   @default(false)
   criado_em         DateTime  @default(now())
 
@@ -482,8 +482,8 @@ model LogAuditoria {
   acao              String    @db.VarChar(255)
   tabela_afetada    String    @db.VarChar(100)
   id_recurso        String?   @db.VarChar(100)
-  valores_antes     String?   @db.LongText
-  valores_depois    String?   @db.LongText
+  valores_antes     String?   @db.Text
+  valores_depois    String?   @db.Text
   ip_address        String?   @db.VarChar(45)
   user_agent        String?   @db.Text
   criado_em         DateTime  @default(now())
