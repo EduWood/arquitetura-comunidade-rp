@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -10,9 +10,5 @@ const nextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['@prisma/client', 'bcryptjs'],
-experimental: {
-  // ...outras configs experimentais (sem o serverExternalPackages)
- },
 }
-
 export default nextConfig
