@@ -21,15 +21,20 @@ export class RegisterService {
     ipAddress?: string,
     userAgent?: string
   ) {
-    // Check registration rate limit
-    const rateLimit = await checkRegisterRateLimit(email);
-    if (!rateLimit.success) {
-      await auditRegistrationFailure(email, ipAddress || 'unknown', 'Rate limit exceeded');
-      throw new AuthError(
-        AuthErrorCodes.VALIDATION_ERROR,
-        'Muitas tentativas de registro. Tente novamente mais tarde',
-        429
-      );
+    // Check registration rate limit (optional - if Redis not configured, skip)
+    try {
+      const rateLimit = await checkRegisterRateLimit(email);
+      if (!rateLimit.success) {
+        await auditRegistrationFailure(email, ipAddress || 'unknown', 'Rate limit exceeded');
+        throw new AuthError(
+          AuthErrorCodes.VALIDATION_ERROR,
+          'Muitas tentativas de registro. Tente novamente mais tarde',
+          429
+        );
+      }
+    } catch (error) {
+      // Se rate limit falhar (Redis não disponível), continua o registro
+      console.warn('[AUTH] Rate limit check failed, continuing registration:', error);
     }
 
     // Validate name
@@ -99,8 +104,12 @@ export class RegisterService {
       },
     });
 
-    // Audit log
-    await auditRegistrationSuccess(user.id, user.email, ipAddress || 'unknown');
+    // Audit log - success (optional, non-blocking)
+    try {
+      await auditRegistrationSuccess(user.id, user.email, ipAddress || 'unknown');
+    } catch (error) {
+      console.warn('[AUTH] Audit log failed:', error);
+    }
 
     return {
       id: user.id,
