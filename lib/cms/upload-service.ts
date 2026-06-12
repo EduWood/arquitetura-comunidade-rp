@@ -176,4 +176,98 @@ export class HostingerUploadService {
       };
     }
   }
+
+  /**
+   * Verificar se arquivo existe
+   */
+  static async verificarArquivo(caminhoRelativo: string): Promise<boolean> {
+    try {
+      const caminhoCompleto = path.join(this.baseStoragePath, caminhoRelativo);
+
+      // Validar caminho (segurança)
+      if (!caminhoCompleto.startsWith(this.baseStoragePath)) {
+        return false;
+      }
+
+      return fs.existsSync(caminhoCompleto);
+    } catch (error) {
+      console.error('[HostingerUploadService] Erro ao verificar arquivo:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Obter tamanho do arquivo
+   */
+  static async obterTamanhoArquivo(caminhoRelativo: string): Promise<number | null> {
+    try {
+      const caminhoCompleto = path.join(this.baseStoragePath, caminhoRelativo);
+
+      // Validar caminho (segurança)
+      if (!caminhoCompleto.startsWith(this.baseStoragePath)) {
+        return null;
+      }
+
+      if (!fs.existsSync(caminhoCompleto)) {
+        return null;
+      }
+
+      const stats = fs.statSync(caminhoCompleto);
+      return stats.size;
+    } catch (error) {
+      console.error('[HostingerUploadService] Erro ao obter tamanho:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Mover arquivo de um local para outro
+   */
+  static async moverArquivo(
+    caminhoOrigem: string,
+    caminhoDestino: string
+  ): Promise<UploadResponse> {
+    try {
+      const caminhoCompletoOrigem = path.join(this.baseStoragePath, caminhoOrigem);
+      const caminhoCompletoDestino = path.join(this.baseStoragePath, caminhoDestino);
+
+      // Validar caminhos (segurança)
+      if (!caminhoCompletoOrigem.startsWith(this.baseStoragePath) ||
+          !caminhoCompletoDestino.startsWith(this.baseStoragePath)) {
+        return {
+          success: false,
+          error: 'Caminho inválido',
+        };
+      }
+
+      // Verificar origem
+      if (!fs.existsSync(caminhoCompletoOrigem)) {
+        return {
+          success: false,
+          error: 'Arquivo de origem não encontrado',
+        };
+      }
+
+      // Criar diretório de destino se não existir
+      const dirDestino = path.dirname(caminhoCompletoDestino);
+      if (!fs.existsSync(dirDestino)) {
+        fs.mkdirSync(dirDestino, { recursive: true });
+      }
+
+      // Mover arquivo
+      fs.renameSync(caminhoCompletoOrigem, caminhoCompletoDestino);
+
+      return {
+        success: true,
+        path: caminhoDestino,
+      };
+    } catch (error) {
+      console.error('[HostingerUploadService] Erro ao mover arquivo:', error);
+      return {
+        success: false,
+        error: 'Erro ao mover arquivo',
+      };
+    }
+  }
 }
+

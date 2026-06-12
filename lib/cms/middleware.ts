@@ -4,10 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verificarToken } from '@/lib/auth/token-verification';
 import { ehAdmin } from '@/lib/auth/permission-checker';
 import { auditLog } from '@/lib/audit-logger';
+import { extractRequestInfo } from '@/lib/request-info';
 
 export interface CMSMiddlewareResult {
   valid: boolean;
   usuarioId?: string;
+  ip?: string;
+  userAgent?: string;
   error?: string;
   response?: NextResponse;
 }
@@ -20,6 +23,7 @@ export async function verificarAutenticacaoCMS(
 ): Promise<CMSMiddlewareResult> {
   try {
     const tokenResult = await verificarToken(request);
+    const requestInfo = extractRequestInfo(request);
 
     if (!tokenResult.valid) {
       const response = NextResponse.json(
@@ -30,15 +34,20 @@ export async function verificarAutenticacaoCMS(
         valid: false,
         error: 'Não autenticado',
         response,
+        ip: requestInfo.ip,
+        userAgent: requestInfo.userAgent,
       };
     }
 
     return {
       valid: true,
       usuarioId: tokenResult.usuarioId,
+      ip: requestInfo.ip,
+      userAgent: requestInfo.userAgent,
     };
   } catch (error) {
     console.error('[verificarAutenticacaoCMS] Erro:', error);
+    const requestInfo = extractRequestInfo(request);
     return {
       valid: false,
       error: 'Erro de autenticação',
@@ -46,6 +55,8 @@ export async function verificarAutenticacaoCMS(
         { error: 'Erro de autenticação' },
         { status: 500 }
       ),
+      ip: requestInfo.ip,
+      userAgent: requestInfo.userAgent,
     };
   }
 }
@@ -76,6 +87,8 @@ export async function verificarAdminCMS(
         usuario_id: auth.usuarioId,
         acao: 'CMS_ACESSO_NEGADO',
         tabela_afetada: 'CMSSeccao',
+        ip_address: auth.ip,
+        user_agent: auth.userAgent,
         valores_depois: {
           motivo: 'Sem permissão ADMIN',
           endpoint: request.nextUrl.pathname,
@@ -86,15 +99,20 @@ export async function verificarAdminCMS(
         valid: false,
         error: 'Sem permissão ADMIN',
         response,
+        ip: auth.ip,
+        userAgent: auth.userAgent,
       };
     }
 
     return {
       valid: true,
       usuarioId: auth.usuarioId,
+      ip: auth.ip,
+      userAgent: auth.userAgent,
     };
   } catch (error) {
     console.error('[verificarAdminCMS] Erro:', error);
+    const requestInfo = extractRequestInfo(request);
     return {
       valid: false,
       error: 'Erro ao verificar permissões',
@@ -102,6 +120,8 @@ export async function verificarAdminCMS(
         { error: 'Erro ao verificar permissões' },
         { status: 500 }
       ),
+      ip: requestInfo.ip,
+      userAgent: requestInfo.userAgent,
     };
   }
 }
@@ -112,6 +132,8 @@ export async function verificarAdminCMS(
 export async function logAcessoCMS(
   usuarioId: string,
   acao: string,
+  ip?: string,
+  userAgent?: string,
   detalhes?: Record<string, any>
 ) {
   try {
@@ -119,9 +141,12 @@ export async function logAcessoCMS(
       usuario_id: usuarioId,
       acao: `CMS_${acao}`,
       tabela_afetada: 'CMSSeccao',
+      ip_address: ip,
+      user_agent: userAgent,
       valores_depois: detalhes,
     });
   } catch (error) {
     console.error('[logAcessoCMS] Erro:', error);
   }
 }
+
