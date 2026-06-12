@@ -1,4 +1,4 @@
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 // ========================================
 // Password Hashing
@@ -50,7 +50,7 @@ export class PasswordService {
       errors.push('Senha deve conter pelo menos um número');
     }
 
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(password)) {
       errors.push('Senha deve conter pelo menos um caractere especial');
     }
 
