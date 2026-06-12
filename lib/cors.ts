@@ -11,9 +11,9 @@ const getAllowedOrigins = (): string[] => {
 export interface CORSOptions {
   origin: string;
   allowCredentials?: boolean;
-  methods?: string[];
-  headers?: string[];
-  exposedHeaders?: string[];
+  methods?: string;
+  headers?: string;
+  exposedHeaders?: string;
   maxAge?: number;
 }
 

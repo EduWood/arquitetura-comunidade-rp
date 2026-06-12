@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { JWTService } from './jwt-service';
 import { AuthError, AuthErrorCodes } from './errors';
-
-const prisma = new PrismaClient();
+import { auditTokenRefresh, auditTokenRefreshFailure } from '@/lib/audit-logger';
 
 // ========================================
 // Refresh Token Service
@@ -12,7 +11,11 @@ export class RefreshTokenService {
   /**
    * Refresh access token using refresh token
    */
-  static async refreshAccessToken(refreshToken: string, userAgent?: string, ipAddress?: string) {
+  static async refreshAccessToken(
+    refreshToken: string,
+    userAgent?: string,
+    ipAddress?: string
+  ) {
     // Verify refresh token
     const payload = JWTService.verifyRefreshToken(refreshToken);
 
@@ -26,11 +29,12 @@ export class RefreshTokenService {
 
     // Find session
     const session = await prisma.sessaoJWT.findUnique({
-      where: { id: payload.sessionId },
+      where: { session_id: payload.sessionId },
       include: { usuario: true },
     });
 
-    if (!session || !session.ativa) {
+    if (!session || session.revogado) {
+      await auditTokenRefreshFailure(payload.userId || 'unknown', ipAddress || 'unknown', 'Session not found');
       throw new AuthError(
         AuthErrorCodes.SESSION_EXPIRED,
         'Sessão expirada',
@@ -38,12 +42,14 @@ export class RefreshTokenService {
       );
     }
 
-    if (session.expiresAt < new Date()) {
+    // Check if session is expired
+    if (session.expires_at < new Date()) {
       await prisma.sessaoJWT.update({
         where: { id: session.id },
-        data: { ativa: false },
+        data: { revogado: true },
       });
 
+      await auditTokenRefreshFailure(payload.userId || 'unknown', ipAddress || 'unknown', 'Session expired');
       throw new AuthError(
         AuthErrorCodes.SESSION_EXPIRED,
         'Sessão expirada',
@@ -57,7 +63,7 @@ export class RefreshTokenService {
     const newAccessToken = JWTService.generateAccessToken({
       userId: user.id,
       email: user.email,
-      role: user.role as any,
+      role: user.role,
       sessionId: payload.sessionId,
     });
 
@@ -66,15 +72,20 @@ export class RefreshTokenService {
       sessionId: payload.sessionId,
     });
 
-    // Update session
+    // Update session with new tokens
     await prisma.sessaoJWT.update({
       where: { id: session.id },
       data: {
-        token: newRefreshToken,
-        userAgent: userAgent?.substring(0, 500) || session.userAgent,
-        ipAddress: ipAddress || session.ipAddress,
+        token: newAccessToken,
+        refresh_token: newRefreshToken,
+        user_agent: userAgent?.substring(0, 500) || session.user_agent,
+        ip_address: ipAddress || session.ip_address,
+        updated_at: new Date(),
       },
     });
+
+    // Audit log
+    await auditTokenRefresh(user.id, ipAddress || 'unknown');
 
     return {
       accessToken: newAccessToken,

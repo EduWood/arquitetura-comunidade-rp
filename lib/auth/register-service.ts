@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
-import { JWTService } from './jwt-service';
+import { ValidationHelper } from './helpers';
 import { AuthError, AuthErrorCodes } from './errors';
-import { UserRole } from './types';
-
-const prisma = new PrismaClient();
+import { auditRegistrationSuccess, auditRegistrationFailure } from '@/lib/audit-logger';
+import { checkRegisterRateLimit } from '@/lib/rate-limiting';
 
 // ========================================
 // Register Service
@@ -18,9 +17,22 @@ export class RegisterService {
     nome: string,
     email: string,
     password: string,
-    confirmPassword: string
+    confirmPassword: string,
+    ipAddress?: string,
+    userAgent?: string
   ) {
-    // Validations
+    // Check registration rate limit
+    const rateLimit = await checkRegisterRateLimit(email);
+    if (!rateLimit.success) {
+      await auditRegistrationFailure(email, ipAddress || 'unknown', 'Rate limit exceeded');
+      throw new AuthError(
+        AuthErrorCodes.VALIDATION_ERROR,
+        'Muitas tentativas de registro. Tente novamente mais tarde',
+        429
+      );
+    }
+
+    // Validate name
     if (!nome || nome.trim().length < 3) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
@@ -29,7 +41,8 @@ export class RegisterService {
       );
     }
 
-    if (!email || !this.isValidEmail(email)) {
+    // Validate email
+    if (!email || !ValidationHelper.isValidEmail(email)) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
         'Email inválido',
@@ -37,6 +50,7 @@ export class RegisterService {
       );
     }
 
+    // Validate passwords match
     if (password !== confirmPassword) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
@@ -45,13 +59,14 @@ export class RegisterService {
       );
     }
 
+    // Validate password strength
     const passwordValidation = PasswordService.validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
         'Senha fraca',
         400,
-        { details: passwordValidation.errors }
+        { errors: passwordValidation.errors }
       );
     }
 
@@ -61,6 +76,7 @@ export class RegisterService {
     });
 
     if (existingUser) {
+      await auditRegistrationFailure(email, ipAddress || 'unknown', 'Email already exists');
       throw new AuthError(
         AuthErrorCodes.EMAIL_ALREADY_EXISTS,
         'Este email já está registrado',
@@ -69,38 +85,28 @@ export class RegisterService {
     }
 
     // Hash password
-    const senhaHash = await PasswordService.hashPassword(password);
+    const senha_hash = await PasswordService.hashPassword(password);
 
     // Create user
     const user = await prisma.usuario.create({
       data: {
-        nome,
+        nome: nome.trim(),
         email: email.toLowerCase(),
-        senhaHash,
-        role: 'MEMBRO' as UserRole,
-        emailVerificado: false,
-        ativo: true,
-        tentativasLogin: 0,
-        bloqueadoAte: null,
+        senha_hash,
+        role: 'MEMBRO',
+        status: 'ATIVO',
+        assinatura_ativa: false,
       },
     });
 
-    // TODO: Send verification email
+    // Audit log
+    await auditRegistrationSuccess(user.id, user.email, ipAddress || 'unknown');
 
     return {
       id: user.id,
       nome: user.nome,
       email: user.email,
       role: user.role,
-      emailVerificado: user.emailVerificado,
     };
-  }
-
-  /**
-   * Validate email format
-   */
-  private static isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   }
 }

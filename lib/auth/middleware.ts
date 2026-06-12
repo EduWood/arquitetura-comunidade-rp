@@ -14,7 +14,7 @@ import { AuthContext } from './types';
 export function withAuth(request: NextRequest): NextResponse | undefined {
   try {
     const authHeader = request.headers.get('authorization');
-    const token = SecurityHelper.extractBearerToken(authHeader);
+    const token = SecurityHelper.extractBearerToken(authHeader || '');
 
     if (!token) {
       return NextResponse.json(
@@ -68,7 +68,7 @@ export function getAuthContext(request: NextRequest): AuthContext | null {
   return {
     userId,
     email,
-    role: role as any,
+    role: role as 'SUPER_ADMIN' | 'ADMIN' | 'MEMBRO',
     sessionId,
     isAuthenticated: true,
   };

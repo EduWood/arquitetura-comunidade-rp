@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { RefreshTokenService } from '@/lib/auth/refresh-token-service';
 import { ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { AuthError } from '@/lib/auth/errors';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // POST /api/auth/refresh
@@ -9,6 +10,12 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const refreshToken = request.cookies.get('refreshToken')?.value;
 
     if (!refreshToken) {
@@ -18,12 +25,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userAgent = SecurityHelper.getUserAgent(request.headers);
+    const userAgent = SecurityHelper.getUserAgent(request.headers) || 'unknown';
     const ipAddress = SecurityHelper.getClientIP(request.headers);
 
     const result = await RefreshTokenService.refreshAccessToken(
       refreshToken,
-      userAgent || undefined,
+      userAgent,
       ipAddress
     );
 
@@ -40,7 +47,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 7 * 24 * 60 * 60,
       path: '/',
     });
 

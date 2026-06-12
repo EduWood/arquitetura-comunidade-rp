@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { RegisterService } from '@/lib/auth/register-service';
 import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { AuthError } from '@/lib/auth/errors';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // POST /api/auth/register
@@ -9,9 +10,14 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
 
-    const { nome, email, password, confirmPassword, aceitaTermos } = body;
+    const body = await request.json();
+    const { nome, email, password, confirmPassword } = body;
 
     // Validations
     const requiredFields = { nome, email, password, confirmPassword };
@@ -26,27 +32,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!aceitaTermos) {
-      return NextResponse.json(
-        ResponseHelper.error(
-          'VALIDATION_ERROR',
-          'Você deve aceitar os termos de serviço',
-          400
-        ),
-        { status: 400 }
-      );
-    }
+    // Get client info
+    const userAgent = SecurityHelper.getUserAgent(request.headers) || 'unknown';
+    const ipAddress = SecurityHelper.getClientIP(request.headers);
 
     // Register user
     const user = await RegisterService.register(
       ValidationHelper.sanitizeName(nome),
       ValidationHelper.sanitizeEmail(email),
       password,
-      confirmPassword
+      confirmPassword,
+      ipAddress,
+      userAgent
     );
-
-    // Log
-    console.log('[AUTH] Novo usuário registrado:', user.email);
 
     return NextResponse.json(
       ResponseHelper.success(user, 'Usuário registrado com sucesso'),

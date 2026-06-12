@@ -169,3 +169,74 @@ export async function auditResetPassword(
     user_agent: userAgent,
   });
 }
+
+export async function auditRegistrationSuccess(userId: string, email: string, ipAddress: string) {
+  await auditLog({
+    usuario_id: userId,
+    acao: AuditAction.REGISTER,
+    descricao: `Novo usuário registrado: ${email}`,
+    ip_address: ipAddress,
+    user_agent: 'registration',
+  });
+}
+
+export async function auditRegistrationFailure(email: string, ipAddress: string, reason: string) {
+  await auditLog({
+    usuario_id: 'unknown',
+    acao: AuditAction.REGISTER,
+    descricao: `Falha no registro: ${reason}`,
+    ip_address: ipAddress,
+    user_agent: 'registration',
+    dados_adicionais: { email },
+  });
+}
+
+export async function auditTokenRefresh(userId: string, ipAddress: string) {
+  await auditLog({
+    usuario_id: userId,
+    acao: AuditAction.REFRESH_TOKEN,
+    descricao: 'Token atualizado com sucesso',
+    ip_address: ipAddress,
+    user_agent: 'token_refresh',
+  });
+}
+
+export async function auditTokenRefreshFailure(userId: string, ipAddress: string, reason: string) {
+  await auditLog({
+    usuario_id: userId || 'unknown',
+    acao: AuditAction.REFRESH_TOKEN,
+    descricao: `Falha ao atualizar token: ${reason}`,
+    ip_address: ipAddress,
+    user_agent: 'token_refresh',
+  });
+}
+
+export async function auditPasswordReset(userId: string, action: string, ipAddress?: string) {
+  const actionMap: Record<string, AuditAction> = {
+    forgot_password_requested: AuditAction.FORGOT_PASSWORD,
+    password_reset_completed: AuditAction.RESET_PASSWORD,
+  };
+
+  await auditLog({
+    usuario_id: userId,
+    acao: actionMap[action] || AuditAction.RESET_PASSWORD,
+    descricao: action === 'forgot_password_requested' ? 'Solicitação de redefinição de senha' : 'Senha redefinida com sucesso',
+    ip_address: ipAddress || 'unknown',
+    user_agent: 'password_reset',
+  });
+}
+
+export async function auditPasswordChange(userId: string, ipAddress?: string) {
+  await auditLog({
+    usuario_id: userId,
+    acao: AuditAction.CHANGE_PASSWORD,
+    descricao: 'Senha alterada pelo usuário',
+    ip_address: ipAddress || 'unknown',
+    user_agent: 'change_password',
+  });
+}
+
+export async function checkPasswordResetRateLimit(email: string): Promise<boolean> {
+  // For now, we'll allow it. In production, integrate with Redis.
+  return true;
+}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ForgotPasswordService } from '@/lib/auth/forgot-password-service';
-import { ValidationHelper, ResponseHelper } from '@/lib/auth/helpers';
-import { AuthError } from '@/lib/auth/errors';
+import { ValidationHelper, ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // POST /api/auth/forgot-password
@@ -9,6 +9,12 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const body = await request.json();
     const { email } = body;
 
@@ -27,11 +33,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await ForgotPasswordService.requestPasswordReset(
-      ValidationHelper.sanitizeEmail(email)
-    );
+    // Get client info
+    const ipAddress = SecurityHelper.getClientIP(request.headers);
 
-    console.log('[AUTH] Recuperação de senha solicitada');
+    const result = await ForgotPasswordService.requestPasswordReset(
+      ValidationHelper.sanitizeEmail(email),
+      ipAddress
+    );
 
     // Always return success for security (email enumeration prevention)
     return NextResponse.json(

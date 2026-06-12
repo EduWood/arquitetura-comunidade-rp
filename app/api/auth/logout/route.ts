@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/middleware';
-import { ResponseHelper } from '@/lib/auth/helpers';
-
-const prisma = new PrismaClient();
+import { ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
+import { auditLogout } from '@/lib/audit-logger';
 
 // ========================================
 // POST /api/auth/logout
@@ -24,13 +23,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Deactivate session
+    // Get client info
+    const ipAddress = SecurityHelper.getClientIP(request.headers);
+    const userAgent = SecurityHelper.getUserAgent(request.headers) || 'unknown';
+
+    // Revoke session
     await prisma.sessaoJWT.updateMany({
-      where: { usuarioId: user.userId, ativa: true },
-      data: { ativa: false },
+      where: { usuario_id: user.userId, revogado: false },
+      data: { revogado: true },
     });
 
-    console.log('[AUTH] Logout realizado:', user.email);
+    // Audit log
+    await auditLogout(user.userId, ipAddress, userAgent);
 
     const response = NextResponse.json(
       ResponseHelper.success(null, 'Logout realizado com sucesso'),

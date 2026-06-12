@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { JWTPayload, JWTRefreshPayload } from './types';
 
+interface DecodedToken {
+  exp?: number;
+  [key: string]: any;
+}
+
 // ========================================
 // JWT Service
 // ========================================
@@ -74,8 +79,8 @@ export class JWTService {
   /**
    * Decode token without verification (for debugging)
    */
-  static decode(token: string): any {
-    return jwt.decode(token);
+  static decode(token: string): DecodedToken | null {
+    return jwt.decode(token) as DecodedToken | null;
   }
 
   /**
@@ -83,7 +88,7 @@ export class JWTService {
    */
   static isTokenExpired(token: string): boolean {
     try {
-      const decoded = jwt.decode(token) as any;
+      const decoded = this.decode(token);
       if (!decoded || !decoded.exp) return true;
       return decoded.exp * 1000 < Date.now();
     } catch {
@@ -96,7 +101,7 @@ export class JWTService {
    */
   static getTokenTimeRemaining(token: string): number {
     try {
-      const decoded = jwt.decode(token) as any;
+      const decoded = this.decode(token);
       if (!decoded || !decoded.exp) return 0;
       return Math.max(0, decoded.exp * 1000 - Date.now());
     } catch {

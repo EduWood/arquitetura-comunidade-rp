@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ForgotPasswordService } from '@/lib/auth/forgot-password-service';
-import { ResponseHelper } from '@/lib/auth/helpers';
+import { ResponseHelper, SecurityHelper } from '@/lib/auth/helpers';
 import { AuthError } from '@/lib/auth/errors';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // POST /api/auth/reset-password
@@ -9,6 +10,12 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const body = await request.json();
     const { token, newPassword, confirmPassword } = body;
 
@@ -24,13 +31,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get client info
+    const ipAddress = SecurityHelper.getClientIP(request.headers);
+
     const result = await ForgotPasswordService.resetPassword(
       token,
       newPassword,
-      confirmPassword
+      confirmPassword,
+      ipAddress
     );
-
-    console.log('[AUTH] Senha redefinida com sucesso');
 
     return NextResponse.json(
       ResponseHelper.success(null, result.message),

@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
 import { AuthError, AuthErrorCodes } from './errors';
+import { auditPasswordReset, checkPasswordResetRateLimit } from '@/lib/audit-logger';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // ========================================
 // Forgot Password Service
@@ -13,7 +12,16 @@ export class ForgotPasswordService {
   /**
    * Request password reset
    */
-  static async requestPasswordReset(email: string): Promise<{ message: string }> {
+  static async requestPasswordReset(email: string, ipAddress?: string): Promise<{ message: string }> {
+    // Check rate limit (3 requests per hour)
+    const rateLimit = await checkPasswordResetRateLimit(email);
+    if (!rateLimit) {
+      // Still return success message for security (email enumeration prevention)
+      return {
+        message: 'Se este email estiver registrado, você receberá um link de recuperação',
+      };
+    }
+
     const user = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -33,15 +41,17 @@ export class ForgotPasswordService {
     // Save reset token
     await prisma.tokenRecuperacao.create({
       data: {
-        usuarioId: user.id,
+        usuario_id: user.id,
         token: resetTokenHash,
-        expiresAt,
+        expires_at: expiresAt,
         usado: false,
       },
     });
 
     // TODO: Send reset email with token
-    // const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
+    // const resetLink = `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password?token=${resetToken}`;
+
+    await auditPasswordReset(user.id, 'forgot_password_requested', ipAddress);
 
     return {
       message: 'Se este email estiver registrado, você receberá um link de recuperação',
@@ -58,7 +68,7 @@ export class ForgotPasswordService {
       where: {
         token: tokenHash,
         usado: false,
-        expiresAt: {
+        expires_at: {
           gt: new Date(),
         },
       },
@@ -85,8 +95,10 @@ export class ForgotPasswordService {
   static async resetPassword(
     token: string,
     newPassword: string,
-    confirmPassword: string
+    confirmPassword: string,
+    ipAddress?: string
   ): Promise<{ message: string }> {
+    // Validate passwords match
     if (newPassword !== confirmPassword) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
@@ -95,24 +107,25 @@ export class ForgotPasswordService {
       );
     }
 
+    // Validate password strength
     const passwordValidation = PasswordService.validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
         'Senha fraca',
         400,
-        { details: passwordValidation.errors }
+        { errors: passwordValidation.errors }
       );
     }
 
-    // Verify token
+    // Verify token and get user
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const resetToken = await prisma.tokenRecuperacao.findFirst({
       where: {
         token: tokenHash,
         usado: false,
-        expiresAt: {
+        expires_at: {
           gt: new Date(),
         },
       },
@@ -127,23 +140,25 @@ export class ForgotPasswordService {
     }
 
     // Hash new password
-    const senhaHash = await PasswordService.hashPassword(newPassword);
+    const senha_hash = await PasswordService.hashPassword(newPassword);
 
-    // Update user password and mark token as used
+    // Update user password, mark token as used, and revoke all sessions
     await Promise.all([
       prisma.usuario.update({
-        where: { id: resetToken.usuarioId },
-        data: { senhaHash },
+        where: { id: resetToken.usuario_id },
+        data: { senha_hash },
       }),
       prisma.tokenRecuperacao.update({
         where: { id: resetToken.id },
         data: { usado: true },
       }),
       prisma.sessaoJWT.updateMany({
-        where: { usuarioId: resetToken.usuarioId },
-        data: { ativa: false },
+        where: { usuario_id: resetToken.usuario_id },
+        data: { revogado: true },
       }),
     ]);
+
+    await auditPasswordReset(resetToken.usuario_id, 'password_reset_completed', ipAddress);
 
     return {
       message: 'Senha alterada com sucesso. Faça login com sua nova senha',

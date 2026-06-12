@@ -3,6 +3,7 @@ import { AuthService } from '@/lib/auth/auth-service';
 import { requireAuth } from '@/lib/auth/middleware';
 import { ResponseHelper } from '@/lib/auth/helpers';
 import { AuthError } from '@/lib/auth/errors';
+import { validateCORSMiddleware } from '@/lib/cors';
 
 // ========================================
 // GET /api/auth/profile
@@ -10,6 +11,12 @@ import { AuthError } from '@/lib/auth/errors';
 
 export async function GET(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const { error, user } = await requireAuth(request);
 
     if (error) {
@@ -52,6 +59,12 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    // Validate CORS
+    const corsValidation = await validateCORSMiddleware(request);
+    if (!corsValidation.isValid) {
+      return corsValidation.response!;
+    }
+
     const { error, user } = await requireAuth(request);
 
     if (error) {
@@ -72,8 +85,6 @@ export async function PUT(request: NextRequest) {
       nome,
       email,
     });
-
-    console.log('[AUTH] Perfil atualizado:', user.email);
 
     return NextResponse.json(
       ResponseHelper.success(updatedProfile, 'Perfil atualizado com sucesso'),

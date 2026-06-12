@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { PasswordService } from './password-service';
+import { ValidationHelper } from './helpers';
 import { AuthError, AuthErrorCodes } from './errors';
-
-const prisma = new PrismaClient();
+import { auditPasswordChange } from '@/lib/audit-logger';
 
 // ========================================
 // Auth Service (Main orchestrator)
@@ -25,7 +25,7 @@ export class AuthService {
       );
     }
 
-    const isValid = await PasswordService.verifyPassword(password, user.senhaHash);
+    const isValid = await PasswordService.verifyPassword(password, user.senha_hash);
 
     if (!isValid) {
       throw new AuthError(
@@ -49,10 +49,10 @@ export class AuthService {
         nome: true,
         email: true,
         role: true,
-        emailVerificado: true,
-        ativo: true,
-        criadoEm: true,
-        ultimoAcesso: true,
+        status: true,
+        assinatura_ativa: true,
+        created_at: true,
+        ultima_login: true,
       },
     });
 
@@ -79,8 +79,7 @@ export class AuthService {
   ) {
     // Validate email if provided
     if (data.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
+      if (!ValidationHelper.isValidEmail(data.email)) {
         throw new AuthError(
           AuthErrorCodes.VALIDATION_ERROR,
           'Email inválido',
@@ -112,8 +111,8 @@ export class AuthService {
         nome: true,
         email: true,
         role: true,
-        emailVerificado: true,
-        ativo: true,
+        status: true,
+        assinatura_ativa: true,
       },
     });
 
@@ -127,7 +126,8 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newPassword: string,
-    confirmPassword: string
+    confirmPassword: string,
+    ipAddress?: string
   ) {
     const user = await prisma.usuario.findUnique({
       where: { id: userId },
@@ -142,7 +142,7 @@ export class AuthService {
     }
 
     // Verify current password
-    const isValid = await PasswordService.verifyPassword(currentPassword, user.senhaHash);
+    const isValid = await PasswordService.verifyPassword(currentPassword, user.senha_hash);
 
     if (!isValid) {
       throw new AuthError(
@@ -152,6 +152,7 @@ export class AuthService {
       );
     }
 
+    // Validate new passwords match
     if (newPassword !== confirmPassword) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
@@ -160,42 +161,34 @@ export class AuthService {
       );
     }
 
+    // Validate password strength
     const passwordValidation = PasswordService.validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
       throw new AuthError(
         AuthErrorCodes.VALIDATION_ERROR,
         'Senha fraca',
         400,
-        { details: passwordValidation.errors }
+        { errors: passwordValidation.errors }
       );
     }
 
-    const senhaHash = await PasswordService.hashPassword(newPassword);
+    // Hash new password
+    const senha_hash = await PasswordService.hashPassword(newPassword);
 
+    // Update password and revoke all sessions
     await Promise.all([
       prisma.usuario.update({
         where: { id: userId },
-        data: { senhaHash },
+        data: { senha_hash },
       }),
-      // Invalidate all sessions
       prisma.sessaoJWT.updateMany({
-        where: { usuarioId: userId },
-        data: { ativa: false },
+        where: { usuario_id: userId },
+        data: { revogado: true },
       }),
     ]);
 
+    await auditPasswordChange(userId, ipAddress);
+
     return { message: 'Senha alterada com sucesso' };
-  }
-
-  /**
-   * Verify email (for email verification feature)
-   */
-  static async verifyEmail(userId: string) {
-    await prisma.usuario.update({
-      where: { id: userId },
-      data: { emailVerificado: true },
-    });
-
-    return { message: 'Email verificado com sucesso' };
   }
 }
